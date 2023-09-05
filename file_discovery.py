@@ -3,6 +3,10 @@ import os
 import re
 import json
 
+# Don't really like this, but we'll figure out a better solution later
+STEAM_PATH = ['C:\Program Files (x86)\Steam\steamapps\common']
+PC_DEFAULT = ['C:\Users']
+
 
 def save_discovered_folders_to_json(discovered_folders: dict) -> int:
     '''Simple method for saving discovered folders in json format.
@@ -32,7 +36,7 @@ def load_discovered_folders_from_json(path: str) -> dict:
 
     return discovered_folders
 
-def discover_folders(path: str) -> int:
+def discover_folders(launcher: str) -> int:
     '''Method to discover location of save files. Currently only seeks steam save data in Windows.
 
     returns success state as int
@@ -44,9 +48,10 @@ def discover_folders(path: str) -> int:
                 * GOG
                 * Others?
             - Discover folders in AppData and other common locations
+            - Error Handling
     '''
 
-    discovered_folders = load_discovered_folders_from_json('./data/discovered_folders.json')
+    discovered_folders = load_discovered_folders_from_json('./data/discovered_folders.json') # Hard-coded value bad
     
     
     for root, dirs, files in os.walk(path):
@@ -64,7 +69,8 @@ def discover_folders(path: str) -> int:
 
 if __name__ == '__main__':
     
-    path = 'C:\Program Files (x86)\Steam\steamapps\common'
+    paths = STEAM_PATH
 
-    discover_folders(path)
+    for path in paths:
+        discover_folders(path)
             
