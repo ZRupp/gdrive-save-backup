@@ -11,6 +11,7 @@
 *.sln.docstates
 credentials.json
 discovered_folders.json
+tokens.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
