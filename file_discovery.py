@@ -2,10 +2,11 @@
 import os
 import re
 import json
+import g_drive
 
 # Don't really like this, but we'll figure out a better solution later
-STEAM_PATH = ['C:\Program Files (x86)\Steam\steamapps\common']
-PC_DEFAULT = ['C:\Users']
+STEAM_PATH = ['C:/Program Files (x86)/Steam/steamapps/common']
+PC_DEFAULT = ['C:/Users']
 
 
 def save_discovered_folders_to_json(discovered_folders: dict) -> int:
@@ -36,7 +37,7 @@ def load_discovered_folders_from_json(path: str) -> dict:
 
     return discovered_folders
 
-def discover_folders(launcher: str) -> int:
+def discover_folders(path: str) -> int:
     '''Method to discover location of save files. Currently only seeks steam save data in Windows.
 
     returns success state as int
@@ -73,4 +74,13 @@ if __name__ == '__main__':
 
     for path in paths:
         discover_folders(path)
+
+    drive = g_drive.GDrive()
+
+    discovered_folders = load_discovered_folders_from_json('./data/discovered_folders.json')
+
+    print(discovered_folders)
+
+    for game_name, folder in discovered_folders.items():
+        drive.upload_to_g_drive(folder +  '/*', f'root/saves/{game_name}/')
             
