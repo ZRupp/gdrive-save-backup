@@ -28,16 +28,11 @@ class GDrive:
         """
 
         if self.file_exists(remote_path):
-            metadata = self.get_metadata(remote_path)
-            local_modified_time = datetime.fromtimestamp(
-                os.path.getmtime(local_path)
-            ).isoformat()
-            remote_modified_time = metadata["modifiedDate"]
-
-            if local_modified_time > remote_modified_time:
+            if self.file_needs_update(local_path, remote_path):
                 # This is probably not ideal since it is a destructive action.
                 self.__fs.rm(remote_path, recursive=True)
 
+                # I'm leaving recursive=True here in case I want this to work for folders.
                 self.__fs.put(local_path, remote_path, recursive=True)
 
                 print(f"Uploaded {local_path} to {remote_path}.")
@@ -45,12 +40,58 @@ class GDrive:
                 print(f"{remote_path} already exists and is up to date.")
 
         else:
+            # I'm leaving recursive=True here in case I want this to work for folders.
             self.__fs.put(local_path, remote_path, recursive=True)
             print(f"Uploaded {local_path} to {remote_path}.")
 
-    def file_exists(self, path: str) -> bool:
+    def download_from_g_drive(
+        self,
+        remote_path: str,
+        local_path: str,
+    ) -> None:
+        """Simple method to download backups from GDrive.
+
+        TODO: Make this work with linux if it doesn't already.
+        TODO: Give user option to download even if remote is older than local.
+        """
+        if self.file_exists(local_path, local=True):
+            if self.file_needs_update(local_path, remote_path, download=True):
+                # I'm leaving recursive=True here in case I want this to work for folders.
+                self.__fs.get(remote_path, local_path, recursive=True)
+                print(f"{remote_path} copied to {local_path}.")
+            else:
+                # We'll eventually give the user the option to download even if remote is older.
+                print(f"{local_path} is more recent than {remote_path}.")
+        else:
+            self.__get(remote_path, local_path, recursive=True)
+
+    def file_needs_update(
+        self,
+        local_path: str,
+        remote_path: str,
+        download=False,
+    ) -> bool:
+        metadata = self.get_metadata(remote_path)
+        local_modified_time = datetime.fromtimestamp(
+            os.path.getmtime(local_path)
+        ).isoformat()
+        remote_modified_time = metadata["modifiedDate"]
+
+        if not download:
+            return local_modified_time > remote_modified_time
+        else:
+            return remote_modified_time > local_modified_time
+
+    def file_exists(
+        self,
+        path: str,
+        local=False,
+    ) -> bool:
         """Simple method to check if the file exists remotely"""
-        return self.__fs.exists(path)
+        if not local:
+            return self.__fs.exists(path)
+        else:
+            os.path.isfile(path)
 
     def get_metadata(self, path: str) -> dict:
         """Method to retrieve metada for a file in the user's GDrive."""
