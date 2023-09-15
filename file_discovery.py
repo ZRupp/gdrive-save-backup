@@ -2,14 +2,30 @@ import os
 import re
 import json
 import g_drive
+import multiprocessing
 
 # Don't really like this, but we'll figure out a better solution later
 # Maybe save these to a configuration file in json?
 STEAM_PATH = ["C:/Program Files (x86)/Steam/steamapps/common"]
-PC_DEFAULT = ["C:/Users"]
+PC_DEFAULT = [
+    os.path.expanduser("~/AppData"),
+    os.path.expanduser("~/Documents/SavedGames"),
+    os.path.expanduser("~/SavedGames"),
+]
 
 REMOTE_SAVE_PATH = "root/saves/"
 DISCOVERED_FOLDERS_PATH = "./data/discovered_folders.json"
+EXCLUDED_FOLDERS = set(
+    [
+        "Python",
+        "Unity",
+        "Yarn",
+        "UnrealEngine",
+        "EOSUserHelper",
+        "CrashReportClient",
+        "EpicGamesLauncher",
+    ]
+)
 
 
 def save_discovered_folders_to_json(discovered_folders: dict) -> int:
@@ -39,6 +55,25 @@ def load_discovered_folders_from_json(path: str) -> dict:
         discovered_folders = json.load(f)
 
     return discovered_folders
+
+
+def discover_folders_test(path: str) -> int:
+    discovered_folders = {}
+    for root, dirs, files in os.walk(path):
+        dirs[:] = set(dirs) - EXCLUDED_FOLDERS
+        matching = [dir for dir in dirs if re.search(r"^save", dir, re.IGNORECASE)]
+        if matching:
+            dirs[:] = []
+            print(f"{root}{matching}")
+            if 'common' in root:
+                re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
+                game_name = re.search(re_query, root)[0]
+            else:
+                game_name = root.split(os.path.sep)[-1]
+
+            discovered_folders[game_name] = matching
+
+            print(discovered_folders)
 
 
 def discover_folders(path: str) -> int:
@@ -75,11 +110,13 @@ def discover_folders(path: str) -> int:
 
 
 if __name__ == "__main__":
-    paths = STEAM_PATH
+    paths = PC_DEFAULT
+    paths += STEAM_PATH
 
     for path in paths:
-        discover_folders(path)
+        discover_folders_test(path)
 
+    """
     drive = g_drive.GDrive()
 
     discovered_folders = load_discovered_folders_from_json(DISCOVERED_FOLDERS_PATH)
@@ -95,3 +132,4 @@ if __name__ == "__main__":
                 )
 
         # drive.upload_to_g_drive(folder + "/*", f"{REMOTE_SAVE_PATH}{game_name}/")
+"""
