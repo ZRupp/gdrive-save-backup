@@ -63,7 +63,7 @@ def load_discovered_folders_from_json(path: str) -> dict:
     return discovered_folders
 
 
-def discover_folders_test(paths_to_process: list) -> None:
+def discover_folders(paths_to_process: list) -> None:
     """Method to discover location of save files. Currently only seeks steam save data in Windows.
 
     TODO:   - Make OS agnostic
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     paths = PC_DEFAULT
     paths += STEAM_PATH
 
-    discover_folders_test(paths)
+    discover_folders(paths)
 
     print(load_discovered_folders_from_json(DISCOVERED_FOLDERS_PATH))
     """
