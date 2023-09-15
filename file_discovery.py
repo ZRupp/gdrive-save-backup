@@ -1,8 +1,10 @@
 import os
 import re
 import json
+from json.decoder import JSONDecodeError
 import g_drive
 import multiprocessing
+import time
 
 # Don't really like this, but we'll figure out a better solution later
 # Maybe save these to a configuration file in json?
@@ -51,71 +53,49 @@ def load_discovered_folders_from_json(path: str) -> dict:
               them if not.
             - Error Handling
     """
-    with open(path, "r", encoding="utf-8") as f:
-        discovered_folders = json.load(f)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            discovered_folders = json.load(f)
+    except JSONDecodeError:
+        print("Error reading `discovered_folders.json`. Starting over with blank file.")
+        discovered_folders = {}
 
     return discovered_folders
 
 
-def discover_folders_test(path: str) -> int:
-    discovered_folders = {}
-    for root, dirs, files in os.walk(path):
-        dirs[:] = set(dirs) - EXCLUDED_FOLDERS
-        matching = [dir for dir in dirs if re.search(r"^save", dir, re.IGNORECASE)]
-        if matching:
-            dirs[:] = []
-            print(f"{root}{matching}")
-            if 'common' in root:
-                re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
-                game_name = re.search(re_query, root)[0]
-            else:
-                game_name = root.split(os.path.sep)[-1]
-
-            discovered_folders[game_name] = matching
-
-            print(discovered_folders)
-
-
-def discover_folders(path: str) -> int:
+def discover_folders_test(paths_to_process: list) -> None:
     """Method to discover location of save files. Currently only seeks steam save data in Windows.
 
-    returns success state as int
-
     TODO:   - Make OS agnostic
-            - Discover folders for other launchers
-                * Epic
-                * Heroic
-                * GOG
-                * Others?
-            - Discover folders in AppData and other common locations
             - Error Handling
     """
-
     discovered_folders = load_discovered_folders_from_json(DISCOVERED_FOLDERS_PATH)
 
-    # This is specific to Steam games on Windows. Edit for other launchers.
-    re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
+    for path in paths_to_process:
+        for root, dirs, files in os.walk(path):
+            dirs[:] = set(dirs) - EXCLUDED_FOLDERS - set(discovered_folders)
+            matching = [dir for dir in dirs if re.search(r"^save", dir, re.IGNORECASE)]
+            if matching:
+                dirs[:] = []
+                print(f"{root}{matching}")
+                if "common" in root:
+                    re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
+                    game_name = re.search(re_query, root)[0]
+                else:
+                    game_name = root.split(os.path.sep)[-1]
 
-    for root, dirs, files in os.walk(path):
-        matching = [dir for dir in dirs if re.search(r"^save|^Save", dir)]
-        if matching:
-            game_name = re.search(re_query, root)[0]
-            if game_name not in discovered_folders:
-                for match in matching:
-                    discovered_folders[game_name] = os.path.join(root, match)
+                discovered_folders[game_name] = matching
 
     save_discovered_folders_to_json(discovered_folders)
-
-    return 1
 
 
 if __name__ == "__main__":
     paths = PC_DEFAULT
     paths += STEAM_PATH
 
-    for path in paths:
-        discover_folders_test(path)
+    discover_folders_test(paths)
 
+    print(load_discovered_folders_from_json(DISCOVERED_FOLDERS_PATH))
     """
     drive = g_drive.GDrive()
 
