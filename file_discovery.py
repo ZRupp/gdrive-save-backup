@@ -16,6 +16,8 @@ PC_DEFAULT = [
 ]
 
 REMOTE_SAVE_PATH = "root/saves/"
+
+# Maybe we should use SQL instead of saving to json. Would allow saving date backed up.
 DISCOVERED_FOLDERS_PATH = "./data/discovered_folders.json"
 EXCLUDED_FOLDERS = set(
     [
@@ -80,6 +82,8 @@ def discover_folders(paths_to_process: list) -> None:
                 print(f"{root}{matching}")
                 if "common" in root:
                     re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
+
+                    # TODO: Things can possibly go wrong here if there is no match!!!
                     game_name = re.search(re_query, root)[0]
                 else:
                     game_name = root.split(os.path.sep)[-1]
@@ -89,9 +93,19 @@ def discover_folders(paths_to_process: list) -> None:
     save_discovered_folders_to_json(discovered_folders)
 
 
+def discover_steam_libraries() -> list:
+
+    drive_letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    game_install_location = 'SteamLibrary/steamapps/common'
+
+    return [f'{drive}:/{game_install_location}' for drive in drive_letters if os.path.exists(f'{drive}:{game_install_location}')]
+
+
 if __name__ == "__main__":
     paths = PC_DEFAULT
     paths += STEAM_PATH
+
+    paths += discover_steam_libraries()
 
     discover_folders(paths)
 
