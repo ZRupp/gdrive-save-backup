@@ -88,7 +88,7 @@ def discover_folders(paths_to_process: list) -> None:
                 else:
                     game_name = root.split(os.path.sep)[-1]
 
-                discovered_folders[game_name] = matching
+                discovered_folders[game_name] = f'{root}{matching[0]}'
 
     save_discovered_folders_to_json(discovered_folders)
 
