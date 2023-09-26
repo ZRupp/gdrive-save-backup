@@ -7,7 +7,10 @@ from datetime import datetime
 
 
 class GDrive:
-    """A Class allowing manipulation of the GoogleDrive object"""
+    """ A Class allowing manipulation of the GoogleDrive object
+    
+        TODO: Remove pydrive2 dependency by interacting directly with GDrive API.
+    """
 
     def __init__(self):
         self.__gauth = GoogleAuth()

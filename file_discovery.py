@@ -88,7 +88,7 @@ def discover_folders(paths_to_process: list) -> None:
                 else:
                     game_name = root.split(os.path.sep)[-1]
 
-                discovered_folders[game_name] = f'{root}{matching[0]}'
+                discovered_folders[game_name] = f'{root}/{matching[0]}'
 
     save_discovered_folders_to_json(discovered_folders)
 
@@ -112,15 +112,16 @@ if __name__ == "__main__":
     print(load_discovered_folders_from_json(DISCOVERED_FOLDERS_PATH))
     """
     drive = g_drive.GDrive()
-
+"""
     discovered_folders = load_discovered_folders_from_json(DISCOVERED_FOLDERS_PATH)
 
     print(discovered_folders)
 
     for game_name, folder in discovered_folders.items():
+        print(folder)
         for root, dirs, files in os.walk(folder):
             print(root, dirs, files)
-            for file in files:
+            """for file in files:
                 drive.upload_to_g_drive(
                     f"{folder}\\{file}", f"{REMOTE_SAVE_PATH}{game_name}/{file}"
                 )
