@@ -2,7 +2,6 @@ import os
 import re
 import json
 from json.decoder import JSONDecodeError
-import g_drive
 import multiprocessing
 import time
 
@@ -14,6 +13,8 @@ PC_DEFAULT = [
     os.path.expanduser("~/Documents/SavedGames"),
     os.path.expanduser("~/SavedGames"),
 ]
+
+CONFIG_PATH = '../data/config.json'
 
 REMOTE_SAVE_PATH = "root/saves/"
 
@@ -94,12 +95,28 @@ def discover_folders(paths_to_process: list) -> None:
 
 
 def discover_steam_libraries() -> list:
+    """ Method for discovering Steam libraries on all drives using default SteamLibrary naming convention.
+    """
 
     drive_letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     game_install_location = 'SteamLibrary/steamapps/common'
+    default_install_location = 'Program Files (x86)/Steam/steamapps/common'
+    
 
-    return [f'{drive}:/{game_install_location}' for drive in drive_letters if os.path.exists(f'{drive}:{game_install_location}')]
+    return [
+        f"{drive}:/{game_install_location if drive != 'C' else default_install_location}" 
+        for drive in drive_letters if os.path.exists(f"{drive}:{game_install_location if drive != 'C' else default_install_location}")
+        ]
 
+def generate_paths() -> list:
+    paths = PC_DEFAULT
+    paths += STEAM_PATH
+
+    paths += discover_steam_libraries()
+
+    discover_folders(paths)
+
+    return paths
 
 if __name__ == "__main__":
     paths = PC_DEFAULT
