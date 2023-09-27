@@ -1,9 +1,12 @@
 import os
 import re
 import json
+import sys
+
+sys.path[0] += "\\.."
 from json.decoder import JSONDecodeError
-from utilities import load_from_json, save_to_json
-from GDrive import GDrive
+from backend.utilities import load_from_json, save_to_json
+from backend.GDrive import GDrive
 import multiprocessing
 import time
 
