@@ -11,12 +11,14 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self.saves = load_from_json(DISCOVERED_FOLDERS_PATH)
 
-    def columnCount(self, index) -> int:
+    def columnCount(self, parent: QModelIndex) -> int:
         return 2
     
-    def rowCount(self, index) -> int:
+    def rowCount(self, parent: QModelIndex) -> int:
         return len(self.saves)
     
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int):
+        print(orientation)
         if orientation == QtCore.Qt.Orientation.Horizontal:
-            return ["X", "Y", "Z"][section]
+            print(section)
+            return ["Game", "Save Location"][section]
