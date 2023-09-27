@@ -2,6 +2,8 @@ import os
 import re
 import json
 from json.decoder import JSONDecodeError
+from utilities import *
+from GDrive import GDrive
 import multiprocessing
 import time
 
@@ -13,8 +15,6 @@ PC_DEFAULT = [
     os.path.expanduser("~/Documents/SavedGames"),
     os.path.expanduser("~/SavedGames"),
 ]
-
-CONFIG_PATH = '../data/config.json'
 
 REMOTE_SAVE_PATH = "root/saves/"
 
@@ -33,46 +33,13 @@ EXCLUDED_FOLDERS = set(
 )
 
 
-def save_discovered_folders_to_json(discovered_folders: dict) -> int:
-    """Simple method for saving discovered folders in json format.
-
-    returns int for success status
-
-    TODO: - Error Handling
-    """
-
-    with open(DISCOVERED_FOLDERS_PATH, "w", encoding="utf-8") as f:
-        json.dump(discovered_folders, f, ensure_ascii=False)
-
-    return 1
-
-
-def load_discovered_folders_from_json(path: str) -> dict:
-    """Simple method for a json file populated with games and the save folder locations.
-
-    returns a dict in the form {'game_name': 'path_to_game'}
-
-    TODO:   - Either in this method or another, ensure that folders exist and remove
-              them if not.
-            - Error Handling
-    """
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            discovered_folders = json.load(f)
-    except JSONDecodeError:
-        print("Error reading `discovered_folders.json`. Starting over with blank file.")
-        discovered_folders = {}
-
-    return discovered_folders
-
-
 def discover_folders(paths_to_process: list) -> None:
     """Method to discover location of save files. Currently only seeks steam save data in Windows.
 
     TODO:   - Make OS agnostic
             - Error Handling
     """
-    discovered_folders = load_discovered_folders_from_json(DISCOVERED_FOLDERS_PATH)
+    discovered_folders = load_from_json(DISCOVERED_FOLDERS_PATH)
 
     for path in paths_to_process:
         for root, dirs, files in os.walk(path):
@@ -89,24 +56,26 @@ def discover_folders(paths_to_process: list) -> None:
                 else:
                     game_name = root.split(os.path.sep)[-1]
 
-                discovered_folders[game_name] = f'{root}/{matching[0]}'
+                discovered_folders[game_name] = f"{root}/{matching[0]}"
 
-    save_discovered_folders_to_json(discovered_folders)
+    save_to_json(discovered_folders, DISCOVERED_FOLDERS_PATH)
 
 
 def discover_steam_libraries() -> list:
-    """ Method for discovering Steam libraries on all drives using default SteamLibrary naming convention.
-    """
+    """Method for discovering Steam libraries on all drives using default SteamLibrary naming convention."""
 
-    drive_letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    game_install_location = 'SteamLibrary/steamapps/common'
-    default_install_location = 'Program Files (x86)/Steam/steamapps/common'
-    
+    drive_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    game_install_location = "SteamLibrary/steamapps/common"
+    default_install_location = "Program Files (x86)/Steam/steamapps/common"
 
     return [
-        f"{drive}:/{game_install_location if drive != 'C' else default_install_location}" 
-        for drive in drive_letters if os.path.exists(f"{drive}:{game_install_location if drive != 'C' else default_install_location}")
-        ]
+        f"{drive}:/{game_install_location if drive != 'C' else default_install_location}"
+        for drive in drive_letters
+        if os.path.exists(
+            f"{drive}:{game_install_location if drive != 'C' else default_install_location}"
+        )
+    ]
+
 
 def generate_paths() -> list:
     paths = PC_DEFAULT
@@ -118,6 +87,7 @@ def generate_paths() -> list:
 
     return paths
 
+
 if __name__ == "__main__":
     paths = PC_DEFAULT
     paths += STEAM_PATH
@@ -126,11 +96,11 @@ if __name__ == "__main__":
 
     discover_folders(paths)
 
-    print(load_discovered_folders_from_json(DISCOVERED_FOLDERS_PATH))
+    print(load_from_json(DISCOVERED_FOLDERS_PATH))
     """
     drive = g_drive.GDrive()
 """
-    discovered_folders = load_discovered_folders_from_json(DISCOVERED_FOLDERS_PATH)
+    discovered_folders = load_from_json(DISCOVERED_FOLDERS_PATH)
 
     print(discovered_folders)
 
