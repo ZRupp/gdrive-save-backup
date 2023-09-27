@@ -81,14 +81,23 @@ def discover_steam_libraries() -> list:
 
 
 def generate_paths() -> list:
+    """Simple method to build list of paths for PC"""
     paths = PC_DEFAULT
     paths += STEAM_PATH
 
     paths += discover_steam_libraries()
 
-    discover_folders(paths)
-
     return paths
+
+def start_discovery():
+    """Begins the save discovery process"""
+
+    print("Generating paths...")
+    paths = generate_paths()
+    print("Discovering saves...")
+    discover_folders(paths)
+    print("Done!")
+
 
 
 if __name__ == "__main__":
