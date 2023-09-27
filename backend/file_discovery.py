@@ -2,7 +2,7 @@ import os
 import re
 import json
 from json.decoder import JSONDecodeError
-from utilities import *
+from utilities import load_from_json, save_to_json
 from GDrive import GDrive
 import multiprocessing
 import time
