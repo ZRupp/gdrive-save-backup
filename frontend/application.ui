@@ -42,22 +42,5 @@
         </widget>
     </widget>
     <resources />
-    <connections>
-        <connection>
-            <sender>discover_button</sender>
-            <signal>clicked()</signal>
-            <receiver>discover_button</receiver>
-            <slot>click()</slot>
-            <hints>
-                <hint type="sourcelabel">
-                    <x>582</x>
-                    <y>164</y>
-                </hint>
-                <hint type="destinationlabel">
-                    <x>582</x>
-                    <y>164</y>
-                </hint>
-            </hints>
-        </connection>
-    </connections>
+    <connections />
 </ui>

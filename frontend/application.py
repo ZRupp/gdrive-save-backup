@@ -8,7 +8,7 @@
 from SaveTableModel import SaveTableModel
 import sys
 sys.path[0] += '\\..'
-from backend.file_discovery import *
+from backend.file_discovery import start_discovery
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import Qt
 
@@ -23,6 +23,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.model = SaveTableModel(None)
         self.savesTableView.setModel(self.model)
+        self.discover_button.clicked.connect(self.discover)
+
+    def discover(self):
+        start_discovery()
+        self.savesTableView.update_saves()
+        self.savesTableView.layoutChanged.emit()
 
 if __name__ =='__main__':
     app = QtWidgets.QApplication(sys.argv)
