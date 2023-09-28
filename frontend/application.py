@@ -27,8 +27,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def discover(self):
         start_discovery()
-        self.savesTableView.update_saves()
-        self.savesTableView.layoutChanged.emit()
+        self.model.update_saves()
+        self.model.layoutChanged.emit()
 
 if __name__ =='__main__':
     app = QtWidgets.QApplication(sys.argv)
