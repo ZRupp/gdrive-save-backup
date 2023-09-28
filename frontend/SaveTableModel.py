@@ -1,4 +1,3 @@
-import typing
 from PyQt6 import QtCore
 from PyQt6.QtCore import QModelIndex, QObject, Qt
 import sys
@@ -21,9 +20,10 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         return len(self.__data)
     
     def data(self, index: QModelIndex, role: int):
-        row = index.row()
-        column = index.column()
-        return self.__data[row][column]
+        if role == Qt.ItemDataRole.DisplayRole:
+            row = index.row()
+            column = index.column()
+            return self.__data[row][column]
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int):
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
