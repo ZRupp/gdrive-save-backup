@@ -10,7 +10,7 @@ def save_to_json(dict_to_save: dict, destination: str) -> None:
         with open(destination, "w", encoding="utf-8") as f:
             json.dump(dict_to_save, f, ensure_ascii=False)
     except Exception as e:
-        print(e.message)
+        print(e)
 
 
 def load_from_json(location: str) -> dict:
