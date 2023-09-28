@@ -11,6 +11,7 @@ sys.path[0] += '\\..'
 from backend.file_discovery import start_discovery
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QCursor
 
 qt_creator_file = "./frontend/application.ui"
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qt_creator_file)
@@ -24,16 +25,28 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.model = SaveTableModel(None)
         self.savesTableView.setModel(self.model)
         self.update_view()
-        self.discover_button.clicked.connect(self.discover)    
+        self.discover_button.clicked.connect(self.discover)
+    
 
+    def __busy_cursor_decorator(func):
+        def wrapper(self):
+            """Wrapper to change cursor to busy cursor when process is running."""
+            self.setCursor(QCursor(Qt.CursorShape.BusyCursor))
+            func(self)
+            self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
+        return wrapper  
+
+
+    @__busy_cursor_decorator
     def discover(self):
         """Method to link backend folder discovery method with frontend."""
-        self.setCursor(QtGui.QCursor(Qt.CursorShape.BusyCursor))
         start_discovery()
         self.model.update_saves()
         self.model.layoutChanged.emit()
         self.update_view()
-        self.setCursor(QtGui.QCursor(Qt.CursorShape.ArrowCursor))
+        
+
+    
 
     def update_view(self):
         self.savesTableView.resizeColumnsToContents()
