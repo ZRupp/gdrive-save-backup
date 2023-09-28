@@ -13,7 +13,7 @@ import pathlib
 
 # Don't really like this, but we'll figure out a better solution later
 # Maybe save these to a configuration file in json?
-STEAM_PATH = [pathlib.PurePath("C:/Program Files (x86)/Steam/steamapps/common")]
+STEAM_PATH = [pathlib.Path("C:/Program Files (x86)/Steam/steamapps/common")]
 PC_DEFAULT = [
     pathlib.Path("~/AppData").expanduser(),
     pathlib.Path("~/Documents/SavedGames").expanduser(),
@@ -23,7 +23,7 @@ PC_DEFAULT = [
 REMOTE_SAVE_PATH = "root/saves/"
 
 # Maybe we should use SQL instead of saving to json. Would allow saving date backed up.
-DISCOVERED_FOLDERS_PATH = pathlib.PurePath("./data/discovered_folders.json")
+DISCOVERED_FOLDERS_PATH = pathlib.Path("./data/discovered_folders.json")
 EXCLUDED_FOLDERS = set(
     [
         "Python",
@@ -64,7 +64,7 @@ def discover_folders(paths_to_process: list) -> None:
                 else:
                     game_name = p.parts[-1]
 
-                discovered_folders[game_name] = str(pathlib.PurePath(f"{root}/{matching[0]}"))
+                discovered_folders[game_name] = str(pathlib.Path(f"{root}/{matching[0]}"))
 
     save_to_json(discovered_folders, DISCOVERED_FOLDERS_PATH)
 
