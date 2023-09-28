@@ -23,12 +23,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.model = SaveTableModel(None)
         self.savesTableView.setModel(self.model)
-        self.discover_button.clicked.connect(self.discover)
+        self.update_view()
+        self.discover_button.clicked.connect(self.discover)    
 
     def discover(self):
+        """Method to link backend folder discovery method with frontend."""
         start_discovery()
         self.model.update_saves()
         self.model.layoutChanged.emit()
+        self.update_view()
+
+    def update_view(self):
+        self.savesTableView.resizeColumnsToContents()
+        self.savesTableView.resizeRowsToContents()
 
 if __name__ =='__main__':
     app = QtWidgets.QApplication(sys.argv)
