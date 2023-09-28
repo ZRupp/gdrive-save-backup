@@ -28,10 +28,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def discover(self):
         """Method to link backend folder discovery method with frontend."""
+        self.setCursor(QtGui.QCursor(Qt.CursorShape.BusyCursor))
         start_discovery()
         self.model.update_saves()
         self.model.layoutChanged.emit()
         self.update_view()
+        self.setCursor(QtGui.QCursor(Qt.CursorShape.ArrowCursor))
 
     def update_view(self):
         self.savesTableView.resizeColumnsToContents()
