@@ -27,7 +27,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int):
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
-            print(section)
+            
             return ["Game Name", "Save Location"][section]
 
     def __format_data(self, data: dict) -> list:
@@ -39,5 +39,13 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         print('hello')
         self.__raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
         self.__data = self.__format_data(self.__raw_data)
-        
+
+    def sort(self, column: int, order: Qt.SortOrder):
+        print(order, column)
+        if order == Qt.SortOrder.AscendingOrder:
+            self.__data.sort(key = lambda x: x[column].lower())
+        else:
+            self.__data.sort(key = lambda x: x[column].lower(), reverse=True)
+        self.layoutChanged.emit()
+
         
