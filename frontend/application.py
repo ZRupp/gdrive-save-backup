@@ -19,6 +19,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savesTableView.setModel(self.model)
         self.update_view()
         self.discover_button.clicked.connect(self.discover)
+        #self.savesTableView.doubleClicked.connect(self.test)
     
 
     def __busy_cursor_decorator(func):
@@ -42,6 +43,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def update_view(self):
         self.savesTableView.resizeColumnsToContents()
         self.savesTableView.resizeRowsToContents()
+
+    def test(self):
+        index = self.savesTableView.currentIndex()
+        self.savesTableView.edit(index)
 
 if __name__ =='__main__':
     app = QtWidgets.QApplication(sys.argv)
