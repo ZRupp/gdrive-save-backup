@@ -1,3 +1,4 @@
+import typing
 from PyQt6 import QtCore
 from PyQt6.QtCore import QModelIndex, QObject, Qt
 import sys
@@ -19,13 +20,18 @@ class SaveTableModel(QtCore.QAbstractTableModel):
     def rowCount(self, parent: QModelIndex) -> int:
         return len(self.__data)
     
-    def data(self, index: QModelIndex, role: int):
+    def data(self, index: QModelIndex, role: Qt.ItemDataRole) -> str:
+        
+        row = index.row()
+        column = index.column()
+        
         if role == Qt.ItemDataRole.DisplayRole:
-            row = index.row()
-            column = index.column()
             return self.__data[row][column]
+        
+        if role == Qt.ItemDataRole.EditRole:
+            return self.__data[row][column]    
 
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int):
+    def headerData(self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole) -> str:
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             
             return ["Game Name", "Save Location"][section]
@@ -40,7 +46,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self.__raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
         self.__data = self.__format_data(self.__raw_data)
 
-    def sort(self, column: int, order: Qt.SortOrder):
+    def sort(self, column: int, order: Qt.SortOrder) -> None:
         print(order, column)
         if order == Qt.SortOrder.AscendingOrder:
             self.__data.sort(key = lambda x: x[column].lower())
@@ -48,4 +54,34 @@ class SaveTableModel(QtCore.QAbstractTableModel):
             self.__data.sort(key = lambda x: x[column].lower(), reverse=True)
         self.layoutChanged.emit()
 
+    def setData(self, index: QModelIndex, value: object, role: Qt.ItemDataRole) -> bool:
+        print('hello')
+        if role == QtCore.Qt.ItemDataRole.EditRole:
+            row = index.row()
+            col = index.column()
+
+            self.__update_underlying_data(self.__data[row][:], value)
+            print(self.__raw_data)
+            self.__data[row][col] = value
+            self.dataChanged.emit(index, index, [role])
+            return True
+        return False
+
+    def flags(self, index):
+        if not index.isValid():
+            return QtCore.Qt.ItemFlag.NoItemFlags
+        col = index.column()
+        if col == 0:
+            return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEditable
+        else:
+            return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
         
+    def __update_underlying_data(self, old_data: list, new_data: str) -> bool:
+        game_name = old_data[0]
+        save_location = old_data[1]
+
+        del self.__raw_data[game_name]
+        self.__raw_data[new_data] = save_location
+
+        return True
+
