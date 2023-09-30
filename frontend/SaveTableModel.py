@@ -104,7 +104,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
             return True
         return False
 
-    def flags(self, index):
+    def flags(self, index: QModelIndex):
 
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
