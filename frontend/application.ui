@@ -23,7 +23,10 @@
                             name="savesTableView">
                         <property name="sizeAdjustPolicy">
                             <enum>QAbstractScrollArea::AdjustToContents</enum>
-                        </property>                       
+                        </property>
+                        <property name="editTriggers">
+                            <set>QAbstractItemView::AnyKeyPressed|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+                        </property>
                         <property name="autoFillBackground">
                             <bool>true</bool>
                         </property>
