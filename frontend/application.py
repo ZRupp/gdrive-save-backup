@@ -58,8 +58,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             selected_path = file_dialog.getExistingDirectory(self, "Select Directory")
 
             if selected_path:
-                # Perform actions with the selected path (e.g., update model or display path)
-                print("Selected Path:", selected_path)
+                self.model.setData(index, selected_path, Qt.ItemDataRole.EditRole)
 
 if __name__ =='__main__':
     app = QtWidgets.QApplication(sys.argv)
