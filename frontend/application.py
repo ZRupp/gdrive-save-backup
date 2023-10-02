@@ -59,6 +59,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             if selected_path:
                 self.model.setData(index, selected_path, Qt.ItemDataRole.EditRole)
+                self.update_view()
 
 if __name__ =='__main__':
     app = QtWidgets.QApplication(sys.argv)
