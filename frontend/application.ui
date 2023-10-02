@@ -46,7 +46,7 @@
                         </property>
                         <property name="icon">
                             <iconset>
-                                <normalon>../../Downloads/list-add.png</normalon>
+                                <normalon>assets/list-add.png</normalon>
                             </iconset>
                         </property>
                     </widget>
@@ -63,7 +63,7 @@
                         </property>
                         <property name="icon">
                             <iconset>
-                                <normalon>../../Downloads/list-remove.png</normalon>
+                                <normalon>assets/list-remove.png</normalon>
                             </iconset>
                         </property>
                     </widget>
