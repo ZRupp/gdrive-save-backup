@@ -154,7 +154,6 @@ class SaveTableModel(QtCore.QAbstractTableModel):
             self.__raw_data[game_name] = save_location
             save_to_json(self.__raw_data, DISCOVERED_FOLDERS_PATH)
             self.__data.append([game_name, save_location])
-            print(self.rowCount(self.parent()), self.columnCount(self.parent()))
             self.dataChanged.emit(index, index, [Qt.ItemDataRole.EditRole])
             self.cellDataChanged.emit(COL_GAME_NAME)
             self.layoutChanged.emit()
