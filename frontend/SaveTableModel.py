@@ -129,6 +129,8 @@ class SaveTableModel(QtCore.QAbstractTableModel):
 
         Returns:
             bool: True if the update was successful, False otherwise.
+
+        TODO: make this work for deleting and adding new rows as well.
         """
 
         row = index.row()
@@ -146,6 +148,20 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         save_to_json(self.__raw_data, DISCOVERED_FOLDERS_PATH)
 
         return True
+    
+    def add_row(self, game_name: str, save_location: str, index) -> bool:
+        if game_name and save_location and not self.__raw_data.get(game_name):
+            self.__raw_data[game_name] = save_location
+            save_to_json(self.__raw_data, DISCOVERED_FOLDERS_PATH)
+            self.__data.append([game_name, save_location])
+            print(self.rowCount(self.parent()), self.columnCount(self.parent()))
+            self.dataChanged.emit(index, index, [Qt.ItemDataRole.EditRole])
+            self.cellDataChanged.emit(COL_GAME_NAME)
+            self.layoutChanged.emit()
+
+            return True
+        return False
+
 
 
     def delete_row(self, index: QModelIndex, role: Qt.ItemDataRole) -> bool:
