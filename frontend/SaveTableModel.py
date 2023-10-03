@@ -1,6 +1,7 @@
 import typing
 from PyQt6 import QtCore
 from PyQt6.QtCore import QModelIndex, QObject, Qt
+from PyQt6.QtWidgets import QTableView
 import sys
 
 sys.path[0] += "\\.."
@@ -104,8 +105,18 @@ class SaveTableModel(QtCore.QAbstractTableModel):
                 value if col == COL_GAME_NAME else str(pathlib.Path(value))
             )
             self.dataChanged.emit(index, index, [role])
+            sortOrder = self.__get_sort_indicator(col)
+            self.sort(col, sortOrder)
             return True
         return False
+
+    def __get_sort_indicator(self, column: int) -> Qt.SortOrder:
+        if self.parent():
+            if isinstance(self.parent(), QTableView):
+                print('hi')
+                header = self.parent().horizontalHeader()
+                return header.sortIndicator(column)
+        return Qt.SortOrder.AscendingOrder
 
     def flags(self, index: QModelIndex):
         if not index.isValid():
