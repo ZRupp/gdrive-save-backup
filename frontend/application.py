@@ -26,6 +26,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savesTableView.horizontalHeader().sortIndicatorChanged.connect(self.sort_by_column)
         self.model.cellDataChanged.connect(self.sort_by_column)
         self.remove_button.clicked.connect(self.remove_row)
+        self.add_button.clicked.connect(self.add_row)
 
         del_key = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Delete, self.savesTableView)
         del_key.activated.connect(self.remove_row)
@@ -58,12 +59,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savesTableView.resizeColumnsToContents()
         self.savesTableView.resizeRowsToContents()
 
+    def openFileDialog(self) -> str:
+        file_dialog = QtWidgets.QFileDialog(self)
+        file_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
+        file_dialog.setViewMode(QtWidgets.QFileDialog.ViewMode.List)
+
+        return file_dialog
+
     def editFilePath(self, index: QModelIndex) -> bool:
         if index.column() == 1:
 
-            file_dialog = QtWidgets.QFileDialog(self)
-            file_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
-            file_dialog.setViewMode(QtWidgets.QFileDialog.ViewMode.List)
+            file_dialog = self.openFileDialog()
 
             # Set the directory to the one saved.
             role = Qt.ItemDataRole.EditRole
@@ -73,7 +79,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             selected_path = file_dialog.getExistingDirectory(self, "Select Directory")
 
             if selected_path:
-                self.model.setData(index, selected_path, Qt.ItemDataRole.EditRole)
+                self.model.setData(index, selected_path, role)
                 self.update_view()
 
     def sort_by_column(self, column: int, sortOrder: Qt.SortOrder = None) -> None:
@@ -88,6 +94,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             index = self.savesTableView.currentIndex()
             role = Qt.ItemDataRole.EditRole
             self.model.delete_row(index, role)
+
+    def add_row(self):
+        path = pathlib.Path(self.editFilePath(self.savesTableView.currentIndex()))
+        game_name = QtWidgets.QInputDialog()
+        print(path, game_name)
         
 
 if __name__ =='__main__':
