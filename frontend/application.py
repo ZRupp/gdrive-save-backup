@@ -25,6 +25,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.model.cellDataChanged.connect(self.sort_by_column)
         self.remove_button.clicked.connect(self.remove_row)
 
+        del_key = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Delete, self.savesTableView)
+        del_key.activated.connect(self.remove_row)
+
     def __busy_cursor_decorator(func):
         def wrapper(self):
             """Wrapper to change cursor to busy cursor when process is running."""
