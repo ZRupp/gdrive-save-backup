@@ -1,7 +1,6 @@
 import typing
 from PyQt6 import QtCore
 from PyQt6.QtCore import QModelIndex, QObject, Qt
-from PyQt6.QtWidgets import QTableView
 import sys
 
 sys.path[0] += "\\.."
@@ -13,6 +12,7 @@ COL_GAME_NAME = 0
 COL_SAVE_LOCATION = 1
 
 class SaveTableModel(QtCore.QAbstractTableModel):
+    cellDataChanged = QtCore.pyqtSignal(int)
     def __init__(self, parent: QObject | None) -> None:
         super().__init__(parent)
         self.__raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
@@ -66,7 +66,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         """
 
         data = [[game_name, save_location] for game_name, save_location in data.items()]
-        data.sort(key=lambda x: x[COL_GAME_NAME].lower())
+        #data.sort(key=lambda x: x[COL_GAME_NAME].lower())
         return data
 
     def update_saves(self):
@@ -105,18 +105,9 @@ class SaveTableModel(QtCore.QAbstractTableModel):
                 value if col == COL_GAME_NAME else str(pathlib.Path(value))
             )
             self.dataChanged.emit(index, index, [role])
-            sortOrder = self.__get_sort_indicator(col)
-            self.sort(col, sortOrder)
+            self.cellDataChanged.emit(col)
             return True
         return False
-
-    def __get_sort_indicator(self, column: int) -> Qt.SortOrder:
-        if self.parent():
-            if isinstance(self.parent(), QTableView):
-                print('hi')
-                header = self.parent().horizontalHeader()
-                return header.sortIndicator(column)
-        return Qt.SortOrder.AscendingOrder
 
     def flags(self, index: QModelIndex):
         if not index.isValid():
