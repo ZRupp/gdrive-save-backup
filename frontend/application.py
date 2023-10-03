@@ -5,6 +5,7 @@ from backend.file_discovery import start_discovery
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import Qt, QModelIndex
 from PyQt6.QtGui import QCursor
+from PyQt6.QtWidgets import QMessageBox
 
 qt_creator_file = "./frontend/application.ui"
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qt_creator_file)
@@ -27,6 +28,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         del_key = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Delete, self.savesTableView)
         del_key.activated.connect(self.remove_row)
+
+        self.confirmation_box = QMessageBox()
+        self.confirmation_box.setText("Are you sure you want to delete the entry?")
+        self.confirmation_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No);
+        self.confirmation_box.setDefaultButton(QMessageBox.StandardButton.No)
 
     def __busy_cursor_decorator(func):
         def wrapper(self):
@@ -76,9 +82,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.model.sort(column, sortOrder)
 
     def remove_row(self):
-        index = self.savesTableView.currentIndex()
-        role = Qt.ItemDataRole.EditRole
-        self.model.delete_row(index, role)
+        confirmation_choice = self.confirmation_box.exec()
+        if confirmation_choice == QMessageBox.StandardButton.Yes:
+            index = self.savesTableView.currentIndex()
+            role = Qt.ItemDataRole.EditRole
+            self.model.delete_row(index, role)
         
 
 if __name__ =='__main__':
