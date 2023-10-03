@@ -66,7 +66,6 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         """
 
         data = [[game_name, save_location] for game_name, save_location in data.items()]
-        #data.sort(key=lambda x: x[COL_GAME_NAME].lower())
         return data
 
     def update_saves(self):
@@ -147,3 +146,14 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         save_to_json(self.__raw_data, DISCOVERED_FOLDERS_PATH)
 
         return True
+
+
+    def delete_row(self, index: QModelIndex, role: Qt.ItemDataRole) -> bool:
+        row = index.row()
+
+        del self.__raw_data[self.__data[row][COL_GAME_NAME]]
+        save_to_json(self.__raw_data, DISCOVERED_FOLDERS_PATH)
+        del self.__data[row]
+
+        self.dataChanged.emit(index, index, [role])
+        self.layoutChanged.emit()
