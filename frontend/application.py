@@ -96,8 +96,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.model.delete_row(index, role)
 
     def add_row(self):
-        path = pathlib.Path(self.editFilePath(self.savesTableView.currentIndex()))
-        game_name = QtWidgets.QInputDialog()
+        file_dialog = self.openFileDialog()
+        path = file_dialog.getExistingDirectory(self, "Select Directory")
+        input_message = QtWidgets.QInputDialog()
+        game_name = input_message.getText(self, 'Game Name', 'Choose Game Name')
+
         print(path, game_name)
         
 
