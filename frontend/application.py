@@ -23,6 +23,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savesTableView.doubleClicked.connect(self.openFileDialog)
         self.savesTableView.horizontalHeader().sortIndicatorChanged.connect(self.sort_by_column)
         self.model.cellDataChanged.connect(self.sort_by_column)
+        self.remove_button.clicked.connect(self.remove_row)
 
     def __busy_cursor_decorator(func):
         def wrapper(self):
@@ -70,6 +71,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             header = self.savesTableView.horizontalHeader()
             sortOrder = header.sortIndicatorOrder()
         self.model.sort(column, sortOrder)
+
+    def remove_row(self):
+        index = self.savesTableView.currentIndex()
+        role = Qt.ItemDataRole.EditRole
+        self.model.delete_row(index, role)
+        
 
 if __name__ =='__main__':
     app = QtWidgets.QApplication(sys.argv)
