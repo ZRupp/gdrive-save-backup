@@ -23,7 +23,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.update_view()
         self.discover_button.clicked.connect(self.discover)
         self.savesTableView.doubleClicked.connect(self.editFilePath)
-        self.savesTableView.horizontalHeader().sortIndicatorChanged.connect(self.sort_by_column)
         self.model.cellDataChanged.connect(self.sort_by_column)
         self.remove_button.clicked.connect(self.remove_row)
         self.add_button.clicked.connect(self.add_row)
@@ -97,11 +96,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def add_row(self):
         file_dialog = self.openFileDialog()
-        path = file_dialog.getExistingDirectory(self, "Select Directory")
+        path = pathlib.Path(file_dialog.getExistingDirectory(self, "Select Directory"))
         input_message = QtWidgets.QInputDialog()
         game_name = input_message.getText(self, 'Game Name', 'Choose Game Name')
-
-        print(path, game_name)
+        index = self.savesTableView.currentIndex()
+        if game_name[1]:
+        
+            self.model.add_row(game_name[0], str(path), index)
         
 
 if __name__ =='__main__':
