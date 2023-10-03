@@ -17,9 +17,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.model = SaveTableModel(None)
         self.savesTableView.setModel(self.model)
+        self.savesTableView.horizontalHeader().setSortIndicator(0, Qt.SortOrder.AscendingOrder)
         self.update_view()
         self.discover_button.clicked.connect(self.discover)
         self.savesTableView.doubleClicked.connect(self.openFileDialog)
+        self.savesTableView.horizontalHeader().sortIndicatorChanged.connect(self.sort_by_column)
+        self.model.cellDataChanged.connect(self.sort_by_column)
 
     def __busy_cursor_decorator(func):
         def wrapper(self):
@@ -36,6 +39,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         start_discovery()
         self.model.update_saves()
         self.model.layoutChanged.emit()
+        self.sort_by_column(0)
         self.update_view()
         
 
@@ -60,6 +64,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if selected_path:
                 self.model.setData(index, selected_path, Qt.ItemDataRole.EditRole)
                 self.update_view()
+
+    def sort_by_column(self, column: int, sortOrder: Qt.SortOrder = None) -> None:
+        if not sortOrder:
+            header = self.savesTableView.horizontalHeader()
+            sortOrder = header.sortIndicatorOrder()
+        self.model.sort(column, sortOrder)
 
 if __name__ =='__main__':
     app = QtWidgets.QApplication(sys.argv)
