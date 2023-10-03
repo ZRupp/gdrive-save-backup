@@ -1,6 +1,7 @@
 from SaveTableModel import SaveTableModel
 import sys
 sys.path[0] += '\\..'
+import pathlib
 from backend.file_discovery import start_discovery
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import Qt, QModelIndex
@@ -21,7 +22,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savesTableView.horizontalHeader().setSortIndicator(0, Qt.SortOrder.AscendingOrder)
         self.update_view()
         self.discover_button.clicked.connect(self.discover)
-        self.savesTableView.doubleClicked.connect(self.openFileDialog)
+        self.savesTableView.doubleClicked.connect(self.editFilePath)
         self.savesTableView.horizontalHeader().sortIndicatorChanged.connect(self.sort_by_column)
         self.model.cellDataChanged.connect(self.sort_by_column)
         self.remove_button.clicked.connect(self.remove_row)
@@ -57,7 +58,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savesTableView.resizeColumnsToContents()
         self.savesTableView.resizeRowsToContents()
 
-    def openFileDialog(self, index: QModelIndex) -> bool:
+    def editFilePath(self, index: QModelIndex) -> bool:
         if index.column() == 1:
 
             file_dialog = QtWidgets.QFileDialog(self)
