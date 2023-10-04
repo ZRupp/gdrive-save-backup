@@ -6,6 +6,11 @@ sys.path[0] += "\\.."
 from backend.utilities import load_from_json, save_to_json
 import pathlib
 
+import concurrent.futures
+import threading
+
+json_lock = threading.Lock()
+
 # Don't really like this, but we'll figure out a better solution later
 # Maybe save these to a configuration file in json?
 STEAM_PATH = [pathlib.Path("C:/Program Files (x86)/Steam/steamapps/common")]
@@ -31,40 +36,63 @@ EXCLUDED_FOLDERS = set(
     ]
 )
 
+def discover_folders_parallel(paths_to_process: list) -> None:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Submit the discover_folders function for each path to process
+        results = [executor.submit(discover_folders, path) for path in paths_to_process]
 
-def discover_folders(paths_to_process: list) -> None:
+        # Wait for all tasks to complete
+        concurrent.futures.wait(results)
+
+    joined_results = {}
+    
+    for result in results:
+        joined_results.update(result.result())
+
+    save_to_json(joined_results, DISCOVERED_FOLDERS_PATH)
+
+def discover_folders(path: str) -> None:
     """Method to discover location of save files. Currently only seeks steam save data in Windows.
 
     TODO:   - Make OS agnostic
             - Error Handling
     """
-    discovered_folders = load_from_json(DISCOVERED_FOLDERS_PATH)
+    with json_lock:
+        discovered_folders = load_from_json(DISCOVERED_FOLDERS_PATH)
 
-    for path in paths_to_process:
-        for root, dirs, files in os.walk(path):
-            dirs[:] = set(dirs) - EXCLUDED_FOLDERS - set(discovered_folders)
-            matching = [dir for dir in dirs if re.search(r"^save", dir, re.IGNORECASE)]
+
+    discovered_paths = set(discovered_folders.values())
+    discovered_game_names = set(discovered_folders)
+
+
+    for root, dirs, files in os.walk(path):
+        if root.count(os.sep) > 15:
+            dirs[:] = []
+        else:
+            dirs[:] = set(dirs) - EXCLUDED_FOLDERS - discovered_game_names
+            matching = [dir for dir in dirs if dir.lower().startswith('save')]
             if matching:
-                save_path = f'{root}/{matching[0]}'
+                save_path = f"{root}/{matching[0]}"
                 dirs[:] = []
-
-                if len(os.listdir(f'{root}/{matching[0]}')) > 0:
+                
+                if len(os.listdir(save_path)) > 0 and str(
+                    pathlib.Path(save_path)
+                ) not in discovered_paths:
                     p = pathlib.Path(root)
 
                     if "common" in root:
-                        #re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
+                        # re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
 
                         # TODO: Things can possibly go wrong here if there is no match!!!
-                        #game_name = re.search(re_query, root)[0]
-                        
+                        # game_name = re.search(re_query, root)[0]
 
-                        game_name = p.parts[p.parts.index('common') + 1]
+                        game_name = p.parts[p.parts.index("common") + 1]
                     else:
                         game_name = p.parts[-1]
 
                     discovered_folders[game_name] = str(pathlib.Path(save_path))
 
-    save_to_json(discovered_folders, DISCOVERED_FOLDERS_PATH)
+    return discovered_folders
 
 
 def discover_steam_libraries() -> list:
@@ -75,7 +103,9 @@ def discover_steam_libraries() -> list:
     default_install_location = "Program Files (x86)/Steam/steamapps/common"
 
     return [
-        pathlib.Path(f"{drive}:/{game_install_location if drive != 'C' else default_install_location}")
+        pathlib.Path(
+            f"{drive}:/{game_install_location if drive != 'C' else default_install_location}"
+        )
         for drive in drive_letters
         if os.path.exists(
             f"{drive}:{game_install_location if drive != 'C' else default_install_location}"
@@ -92,15 +122,15 @@ def generate_paths() -> list:
 
     return paths
 
+
 def start_discovery():
     """Begins the save discovery process"""
 
     print("Generating paths...")
     paths = generate_paths()
     print("Discovering saves...")
-    discover_folders(paths)
+    discover_folders_parallel(paths)
     print("Done!")
-
 
 
 if __name__ == "__main__":
