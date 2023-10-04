@@ -1,5 +1,5 @@
 import typing
-from PyQt6 import QtCore
+from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import QModelIndex, QObject, Qt
 import sys
 
@@ -11,13 +11,16 @@ import pathlib
 COL_GAME_NAME = 0
 COL_SAVE_LOCATION = 1
 
+
 class SaveTableModel(QtCore.QAbstractTableModel):
     cellDataChanged = QtCore.pyqtSignal(int)
+
     def __init__(self, parent: QObject | None) -> None:
         super().__init__(parent)
         self.__raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
         self.__data = self.__format_data(self.__raw_data)
         self.__headers = ["Game Name", "Save Location"]
+        self.__checkboxes = [False] * len(self.__data)
 
     def columnCount(self, parent: QModelIndex) -> int:
         return 2
@@ -40,11 +43,48 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        if role == Qt.ItemDataRole.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole:
             return self.__data[row][column]
 
-        if role == Qt.ItemDataRole.EditRole:
-            return self.__data[row][column]
+        if role == Qt.ItemDataRole.CheckStateRole:
+            if column == 0:
+                return (
+                    Qt.CheckState.Checked
+                    if self.__checkboxes[row]
+                    else Qt.CheckState.Unchecked
+                )
+            
+    def setData(self, index: QModelIndex, value: object, role: Qt.ItemDataRole) -> bool:
+        """
+        Set data for a specific index and role.
+
+        Args:
+            index (QModelIndex): The model index to set data for.
+            value (object): The new value to set.
+            role (Qt.ItemDataRole): The role for which to set data.
+
+        Returns:
+            bool: True if the data was successfully updated, False otherwise.
+        """
+        row = index.row()
+        col = index.column()
+
+        if role == QtCore.Qt.ItemDataRole.EditRole:
+            if not value.strip():
+                return False
+            self.__update_underlying_data(index, value)
+            self.__data[row][col] = (
+                value if col == COL_GAME_NAME else str(pathlib.Path(value))
+            )
+            self.dataChanged.emit(index, index, [role])
+            self.cellDataChanged.emit(col)
+            return True
+        
+        if role == Qt.ItemDataRole.CheckStateRole:
+            
+            self.__checkboxes[row] = value
+            self.dataChanged.emit(index, index, [role])
+        return False
 
     def headerData(
         self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole
@@ -79,35 +119,6 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         else:
             self.__data.sort(key=lambda x: x[column].lower(), reverse=True)
         self.layoutChanged.emit()
-
-    def setData(self, index: QModelIndex, value: object, role: Qt.ItemDataRole) -> bool:
-        """
-        Set data for a specific index and role.
-
-        Args:
-            index (QModelIndex): The model index to set data for.
-            value (object): The new value to set.
-            role (Qt.ItemDataRole): The role for which to set data.
-
-        Returns:
-            bool: True if the data was successfully updated, False otherwise.
-        """
-
-        if not value.strip():
-            return False
-
-        if role == QtCore.Qt.ItemDataRole.EditRole:
-            row = index.row()
-            col = index.column()
-
-            self.__update_underlying_data(index, value)
-            self.__data[row][col] = (
-                value if col == COL_GAME_NAME else str(pathlib.Path(value))
-            )
-            self.dataChanged.emit(index, index, [role])
-            self.cellDataChanged.emit(col)
-            return True
-        return False
 
     def flags(self, index: QModelIndex):
         if not index.isValid():
@@ -150,7 +161,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         save_to_json(self.__raw_data, DISCOVERED_FOLDERS_PATH)
 
         return True
-    
+
     def add_row(self, game_name: str, save_location: str, index) -> bool:
         if game_name and save_location and not self.__raw_data.get(game_name):
             self.__raw_data[game_name] = save_location
@@ -162,8 +173,6 @@ class SaveTableModel(QtCore.QAbstractTableModel):
 
             return True
         return False
-
-
 
     def delete_row(self, index: QModelIndex, role: Qt.ItemDataRole) -> bool:
         row = index.row()
