@@ -5,6 +5,7 @@ from pydrive2.fs import GDriveFileSystem
 
 from datetime import datetime
 
+DEFAULT_GDRIVE_REMOTE_PATH = "root/saves/"
 
 class GDrive:
     """ A Class allowing manipulation of the GoogleDrive object
@@ -21,7 +22,7 @@ class GDrive:
     def upload_to_g_drive(
         self,
         local_path: str,
-        remote_path: str = "root/saves/",
+        remote_path: str = DEFAULT_GDRIVE_REMOTE_PATH,
     ) -> None:
         """Simple method to upload file to GDrive.
 
