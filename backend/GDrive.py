@@ -4,7 +4,6 @@ from pydrive2.drive import GoogleDrive
 from pydrive2.fs import GDriveFileSystem
 
 from datetime import datetime
-from pathlib import Path
 
 DEFAULT_GDRIVE_REMOTE_PATH = "root/saves/"
 
