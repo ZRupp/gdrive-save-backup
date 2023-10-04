@@ -4,6 +4,7 @@ from pydrive2.drive import GoogleDrive
 from pydrive2.fs import GDriveFileSystem
 
 from datetime import datetime
+from pathlib import Path
 
 DEFAULT_GDRIVE_REMOTE_PATH = "root/saves/"
 
@@ -22,7 +23,8 @@ class GDrive:
     def upload_to_g_drive(
         self,
         local_path: str,
-        remote_path: str = DEFAULT_GDRIVE_REMOTE_PATH,
+        game_name: str,
+        remote_path: str = DEFAULT_GDRIVE_REMOTE_PATH
     ) -> None:
         """Simple method to upload file to GDrive.
 
@@ -30,27 +32,29 @@ class GDrive:
         TODO: Ask users if they want to preserve old saves if they would be deleted otherwise
 
         """
+        if remote_path == DEFAULT_GDRIVE_REMOTE_PATH:
+            remote_path += f'/{game_name}/'
 
         if self.file_exists(remote_path):
-            if self.file_needs_update(local_path, remote_path):
+            if self.file_needs_update(local_path, game_name):
                 # This is probably not ideal since it is a destructive action.
                 self.__fs.rm(remote_path, recursive=True)
 
                 # I'm leaving recursive=True here in case I want this to work for folders.
-                self.__fs.put(local_path, remote_path, recursive=True)
-
+                self.__fs.put(f'{local_path}/*', remote_path, recursive=True)
                 print(f"Uploaded {local_path} to {remote_path}.")
             else:
                 print(f"{remote_path} already exists and is up to date.")
 
         else:
             # I'm leaving recursive=True here in case I want this to work for folders.
-            self.__fs.put(local_path, remote_path, recursive=True)
+            self.__fs.put(f'{local_path}/*', remote_path, recursive=True)
             print(f"Uploaded {local_path} to {remote_path}.")
 
     def download_from_g_drive(
         self,
         remote_path: str,
+        game_name: str,
         local_path: str,
     ) -> None:
         """Simple method to download backups from GDrive.
@@ -59,7 +63,7 @@ class GDrive:
         TODO: Give user option to download even if remote is older than local.
         """
         if self.file_exists(local_path, local=True):
-            if self.file_needs_update(local_path, remote_path, download=True):
+            if self.file_needs_update(local_path, game_name, download=True):
                 # I'm leaving recursive=True here in case I want this to work for folders.
                 self.__fs.get(remote_path, local_path, recursive=True)
                 print(f"{remote_path} copied to {local_path}.")
@@ -72,10 +76,10 @@ class GDrive:
     def file_needs_update(
         self,
         local_path: str,
-        remote_path: str,
+        game_name: str,
         download=False,
     ) -> bool:
-        metadata = self.get_metadata(remote_path)
+        metadata = self.get_metadata(game_name)
         local_modified_time = datetime.fromtimestamp(
             os.path.getmtime(local_path)
         ).isoformat()
@@ -97,11 +101,10 @@ class GDrive:
         else:
             os.path.isfile(path)
 
-    def get_metadata(self, path: str) -> dict:
+    def get_metadata(self, game_name: str) -> dict:
         """Method to retrieve metada for a file in the user's GDrive."""
 
-        title = path.split("/")[-1]
-        q = {"q": f"title = '{title}' and trashed=False"}
+        q = {"q": f"title = '{game_name}' and trashed=False"}
 
         file_list = self.__drive.ListFile(q).GetList()
 
