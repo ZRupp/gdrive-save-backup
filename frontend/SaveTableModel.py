@@ -17,16 +17,16 @@ class SaveTableModel(QtCore.QAbstractTableModel):
 
     def __init__(self, parent: QObject | None) -> None:
         super().__init__(parent)
-        self.__raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
-        self.__data = self.__format_data(self.__raw_data)
-        self.__headers = ["Game Name", "Save Location"]
-        self.__checkboxes = [False] * len(self.__data)
+        self._raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
+        self._data = self.__format_data(self._raw_data)
+        self._headers = ["Game Name", "Save Location"]
+        self._checkboxes = [False] * len(self._data)
 
     def columnCount(self, parent: QModelIndex) -> int:
-        return 2
+        return len(self._headers)
 
     def rowCount(self, parent: QModelIndex) -> int:
-        return len(self.__data)
+        return len(self._data)
 
     def data(self, index: QModelIndex, role: Qt.ItemDataRole) -> str:
         """
@@ -44,13 +44,13 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         column = index.column()
 
         if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole:
-            return self.__data[row][column]
+            return self._data[row][column]
 
         if role == Qt.ItemDataRole.CheckStateRole:
             if column == 0:
                 return (
                     Qt.CheckState.Checked
-                    if self.__checkboxes[row]
+                    if self._checkboxes[row]
                     else Qt.CheckState.Unchecked
                 )
             
@@ -72,8 +72,8 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.ItemDataRole.EditRole:
             if not value.strip():
                 return False
-            self.__update_underlying_data(index, value)
-            self.__data[row][col] = (
+            self._update_underlying_data(index, value)
+            self._data[row][col] = (
                 value if col == COL_GAME_NAME else str(pathlib.Path(value))
             )
             self.dataChanged.emit(index, index, [role])
@@ -82,7 +82,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         
         if role == Qt.ItemDataRole.CheckStateRole:
             
-            self.__checkboxes[row] = value
+            self._checkboxes[row] = value
             self.dataChanged.emit(index, index, [role])
         return False
 
@@ -93,7 +93,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
             orientation == Qt.Orientation.Horizontal
             and role == Qt.ItemDataRole.DisplayRole
         ):
-            return self.__headers[section]
+            return self._headers[section]
 
     def __format_data(self, data: dict) -> list:
         """
@@ -110,14 +110,14 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         return data
 
     def update_saves(self):
-        self.__raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
-        self.__data = self.__format_data(self.__raw_data)
+        self._raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
+        self._data = self.__format_data(self._raw_data)
 
     def sort(self, column: int, order: Qt.SortOrder) -> None:
         if order == Qt.SortOrder.AscendingOrder:
-            self.__data.sort(key=lambda x: x[column].lower())
+            self._data.sort(key=lambda x: x[column].lower())
         else:
-            self.__data.sort(key=lambda x: x[column].lower(), reverse=True)
+            self._data.sort(key=lambda x: x[column].lower(), reverse=True)
         self.layoutChanged.emit()
 
     def flags(self, index: QModelIndex):
@@ -135,8 +135,33 @@ class SaveTableModel(QtCore.QAbstractTableModel):
             return (
                 QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
             )
+        
+    def add_row(self, game_name: str, save_location: str, index) -> bool:
+        if game_name and save_location and not self._raw_data.get(game_name):
+            self._raw_data[game_name] = save_location
+            save_to_json(self._raw_data, DISCOVERED_FOLDERS_PATH)
+            self._data.append([game_name, save_location])
+            self.dataChanged.emit(index, index, [Qt.ItemDataRole.EditRole])
+            self.cellDataChanged.emit(COL_GAME_NAME)
+            self.layoutChanged.emit()
 
-    def __update_underlying_data(self, index: QModelIndex, new_data: str) -> bool:
+            return True
+        return False
+
+    def delete_row(self, index: QModelIndex, role: Qt.ItemDataRole) -> bool:
+        row = index.row()
+
+        del self._raw_data[self._data[row][COL_GAME_NAME]]
+        save_to_json(self._raw_data, DISCOVERED_FOLDERS_PATH)
+        del self._data[row]
+
+        self.dataChanged.emit(index, index, [role])
+        self.layoutChanged.emit()
+
+    def retrieve_selected_data(self):
+        return [row for (row, checked) in zip(self._data, self._checkboxes) if checked]
+
+    def _update_underlying_data(self, index: QModelIndex, new_data: str) -> bool:
         """
         Update the underlying data and save it to a JSON file.
 
@@ -149,40 +174,17 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         row = index.row()
         col = index.column()
 
-        game_name = self.__data[row][COL_GAME_NAME]
-        save_location = self.__data[row][COL_SAVE_LOCATION]
+        game_name = self._data[row][COL_GAME_NAME]
+        save_location = self._data[row][COL_SAVE_LOCATION]
 
         if col == COL_GAME_NAME:
-            del self.__raw_data[game_name]
-            self.__raw_data[new_data] = save_location
+            del self._raw_data[game_name]
+            self._raw_data[new_data] = save_location
         else:
-            self.__raw_data[game_name] = str(pathlib.Path(new_data))
+            self._raw_data[game_name] = str(pathlib.Path(new_data))
 
-        save_to_json(self.__raw_data, DISCOVERED_FOLDERS_PATH)
+        save_to_json(self._raw_data, DISCOVERED_FOLDERS_PATH)
 
         return True
 
-    def add_row(self, game_name: str, save_location: str, index) -> bool:
-        if game_name and save_location and not self.__raw_data.get(game_name):
-            self.__raw_data[game_name] = save_location
-            save_to_json(self.__raw_data, DISCOVERED_FOLDERS_PATH)
-            self.__data.append([game_name, save_location])
-            self.dataChanged.emit(index, index, [Qt.ItemDataRole.EditRole])
-            self.cellDataChanged.emit(COL_GAME_NAME)
-            self.layoutChanged.emit()
-
-            return True
-        return False
-
-    def delete_row(self, index: QModelIndex, role: Qt.ItemDataRole) -> bool:
-        row = index.row()
-
-        del self.__raw_data[self.__data[row][COL_GAME_NAME]]
-        save_to_json(self.__raw_data, DISCOVERED_FOLDERS_PATH)
-        del self.__data[row]
-
-        self.dataChanged.emit(index, index, [role])
-        self.layoutChanged.emit()
-
-    def retrieve_selected_data(self):
-        return [row for (row, checked) in zip(self.__data, self.__checkboxes) if checked]
+    
