@@ -26,6 +26,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.model.cellDataChanged.connect(self.sort_by_column)
         self.remove_button.clicked.connect(self.remove_row)
         self.add_button.clicked.connect(self.add_row)
+        self.upload_button.clicked.connect(self.model.begin_upload)
 
         del_key = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Delete, self.savesTableView)
         del_key.activated.connect(self.remove_row)

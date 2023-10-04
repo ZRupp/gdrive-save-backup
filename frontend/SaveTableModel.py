@@ -5,7 +5,9 @@ import sys
 sys.path[0] += "\\.."
 from backend.file_discovery import *
 from backend.utilities import *
+from backend.GDrive import GDrive
 import pathlib
+
 
 COL_GAME_NAME = 0
 COL_SAVE_LOCATION = 1
@@ -20,6 +22,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self._data = self.__format_data(self._raw_data)
         self._headers = ["Game Name", "Save Location"]
         self._checkboxes = [False] * len(self._data)
+        self._g_drive = GDrive()
 
     def columnCount(self, parent: QModelIndex) -> int:
         return len(self._headers)
@@ -110,6 +113,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
     def update_saves(self):
         self._raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
         self._data = self.__format_data(self._raw_data)
+        self._checkboxes = [False] * len(self._data)
 
     def sort(self, column: int, order: Qt.SortOrder) -> None:
         if order == Qt.SortOrder.AscendingOrder:
@@ -156,7 +160,14 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit(index, index, [role])
         self.layoutChanged.emit()
 
-    def retrieve_selected_data(self):
+    def begin_upload(self):
+        data_to_upload = self._retrieve_selected_data()
+
+        for game_name, location in data_to_upload:
+            print(game_name, location)
+            self._g_drive.upload_to_g_drive(location, game_name)
+
+    def _retrieve_selected_data(self):
         return [row for (row, checked) in zip(self._data, self._checkboxes) if checked]
 
     def _update_underlying_data(self, index: QModelIndex, new_data: str) -> bool:
