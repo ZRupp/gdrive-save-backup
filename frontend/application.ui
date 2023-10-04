@@ -34,6 +34,15 @@
                         </property>
                     </widget>
                 </item>
+                <item row="1"
+                      column="4">
+                    <widget class="QPushButton"
+                            name="pushButton">
+                        <property name="text">
+                            <string>Upload to GDrive</string>
+                        </property>
+                    </widget>
+                </item>
                 <item row="4"
                       column="0">
                     <widget class="QToolButton"
