@@ -17,6 +17,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self.__raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
         self.__data = self.__format_data(self.__raw_data)
+        self.__headers = ["Game Name", "Save Location"]
 
     def columnCount(self, parent: QModelIndex) -> int:
         return 2
@@ -52,7 +53,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
             orientation == Qt.Orientation.Horizontal
             and role == Qt.ItemDataRole.DisplayRole
         ):
-            return ["Game Name", "Save Location"][section]
+            return self.__headers[section]
 
     def __format_data(self, data: dict) -> list:
         """
@@ -117,6 +118,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
                 QtCore.Qt.ItemFlag.ItemIsEnabled
                 | QtCore.Qt.ItemFlag.ItemIsSelectable
                 | QtCore.Qt.ItemFlag.ItemIsEditable
+                | QtCore.Qt.ItemFlag.ItemIsUserCheckable
             )
         else:
             return (
