@@ -37,7 +37,7 @@
                 <item row="1"
                       column="4">
                     <widget class="QPushButton"
-                            name="pushButton">
+                            name="upload_button">
                         <property name="text">
                             <string>Upload to GDrive</string>
                         </property>
