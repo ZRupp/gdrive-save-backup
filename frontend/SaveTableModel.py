@@ -1,4 +1,3 @@
-import typing
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import QModelIndex, QObject, Qt
 import sys
@@ -53,7 +52,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
                     if self._checkboxes[row]
                     else Qt.CheckState.Unchecked
                 )
-            
+
     def setData(self, index: QModelIndex, value: object, role: Qt.ItemDataRole) -> bool:
         """
         Set data for a specific index and role.
@@ -79,9 +78,8 @@ class SaveTableModel(QtCore.QAbstractTableModel):
             self.dataChanged.emit(index, index, [role])
             self.cellDataChanged.emit(col)
             return True
-        
+
         if role == Qt.ItemDataRole.CheckStateRole:
-            
             self._checkboxes[row] = value
             self.dataChanged.emit(index, index, [role])
         return False
@@ -135,7 +133,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
             return (
                 QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
             )
-        
+
     def add_row(self, game_name: str, save_location: str, index) -> bool:
         if game_name and save_location and not self._raw_data.get(game_name):
             self._raw_data[game_name] = save_location
@@ -186,5 +184,3 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         save_to_json(self._raw_data, DISCOVERED_FOLDERS_PATH)
 
         return True
-
-    
