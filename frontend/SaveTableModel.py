@@ -183,3 +183,6 @@ class SaveTableModel(QtCore.QAbstractTableModel):
 
         self.dataChanged.emit(index, index, [role])
         self.layoutChanged.emit()
+
+    def retrieve_selected_data(self):
+        return [row for (row, checked) in zip(self.__data, self.__checkboxes) if checked]
