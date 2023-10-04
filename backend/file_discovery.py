@@ -1,14 +1,9 @@
 import os
 import re
-import json
 import sys
 
 sys.path[0] += "\\.."
-from json.decoder import JSONDecodeError
 from backend.utilities import load_from_json, save_to_json
-from backend.GDrive import GDrive
-import multiprocessing
-import time
 import pathlib
 
 # Don't really like this, but we'll figure out a better solution later
@@ -50,21 +45,24 @@ def discover_folders(paths_to_process: list) -> None:
             dirs[:] = set(dirs) - EXCLUDED_FOLDERS - set(discovered_folders)
             matching = [dir for dir in dirs if re.search(r"^save", dir, re.IGNORECASE)]
             if matching:
+                save_path = f'{root}/{matching[0]}'
                 dirs[:] = []
-                p = pathlib.Path(root)
-                print(f"{root}{matching}")
-                if "common" in root:
-                    #re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
 
-                    # TODO: Things can possibly go wrong here if there is no match!!!
-                    #game_name = re.search(re_query, root)[0]
-                    
+                if len(os.listdir(f'{root}/{matching[0]}')) > 0:
+                    p = pathlib.Path(root)
 
-                    game_name = p.parts[p.parts.index('common') + 1]
-                else:
-                    game_name = p.parts[-1]
+                    if "common" in root:
+                        #re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
 
-                discovered_folders[game_name] = str(pathlib.Path(f"{root}/{matching[0]}"))
+                        # TODO: Things can possibly go wrong here if there is no match!!!
+                        #game_name = re.search(re_query, root)[0]
+                        
+
+                        game_name = p.parts[p.parts.index('common') + 1]
+                    else:
+                        game_name = p.parts[-1]
+
+                    discovered_folders[game_name] = str(pathlib.Path(save_path))
 
     save_to_json(discovered_folders, DISCOVERED_FOLDERS_PATH)
 
