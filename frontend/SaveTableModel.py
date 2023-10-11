@@ -21,7 +21,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self._raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
         self._data = self.__format_data(self._raw_data)
         self._headers = ["Game Name", "Save Location"]
-        self._checkboxes = [False] * len(self._data)
+        self._checkboxes = [True] * len(self._data)
         self._g_drive = GDrive()
 
     def columnCount(self, parent: QModelIndex) -> int:
@@ -95,6 +95,12 @@ class SaveTableModel(QtCore.QAbstractTableModel):
             and role == Qt.ItemDataRole.DisplayRole
         ):
             return self._headers[section]
+        
+        if (
+            orientation == Qt.Orientation.Vertical
+            and role == Qt.ItemDataRole.DisplayRole
+        ):
+            return section
 
     def __format_data(self, data: dict) -> list:
         """
@@ -166,6 +172,12 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         for game_name, location in data_to_upload:
             print(game_name, location)
             self._g_drive.upload_to_g_drive(location, game_name)
+
+
+    def select_all(self, isChecked: bool) -> bool:
+        self._checkboxes = [isChecked] * len(self._data)
+        self.layoutChanged.emit()
+
 
     def _retrieve_selected_data(self):
         return [row for (row, checked) in zip(self._data, self._checkboxes) if checked]
