@@ -81,11 +81,6 @@ def discover_folders(path: str) -> None:
                     p = pathlib.Path(root)
 
                     if "common" in root:
-                        # re_query = "(?<=common[\\\]).*(?=\\\)|(?<=common[\\\]).*"
-
-                        # TODO: Things can possibly go wrong here if there is no match!!!
-                        # game_name = re.search(re_query, root)[0]
-
                         game_name = p.parts[p.parts.index("common") + 1]
                     else:
                         game_name = p.parts[-1]
