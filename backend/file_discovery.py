@@ -131,33 +131,3 @@ def start_discovery():
     print("Discovering saves...")
     discover_folders_parallel(paths)
     print("Done!")
-
-
-if __name__ == "__main__":
-    paths = PC_DEFAULT
-    paths += STEAM_PATH
-
-    paths += discover_steam_libraries()
-    print(paths)
-
-    discover_folders(paths)
-
-    print(load_from_json(DISCOVERED_FOLDERS_PATH))
-    """
-    drive = g_drive.GDrive()
-
-    discovered_folders = load_from_json(DISCOVERED_FOLDERS_PATH)
-
-    print(discovered_folders)
-
-    for game_name, folder in discovered_folders.items():
-        print(folder)
-        for root, dirs, files in os.walk(folder):
-            print(root, dirs, files)
-            for file in files:
-                drive.upload_to_g_drive(
-                    f"{folder}\\{file}", f"{REMOTE_SAVE_PATH}{game_name}/{file}"
-                )
-
-        # drive.upload_to_g_drive(folder + "/*", f"{REMOTE_SAVE_PATH}{game_name}/")
-"""
