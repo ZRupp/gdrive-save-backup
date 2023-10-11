@@ -30,7 +30,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.model.cellDataChanged.connect(self.sort_by_column)
         self.remove_button.clicked.connect(self.remove_row)
         self.add_button.clicked.connect(self.add_row)
-        self.upload_button.clicked.connect(self.model.begin_upload)
+        self.upload_button.clicked.connect(self.upload_data)
 
         del_key = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Delete, self.savesTableView)
         del_key.activated.connect(self.remove_row)
@@ -91,6 +91,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             header = self.savesTableView.horizontalHeader()
             sortOrder = header.sortIndicatorOrder()
         self.model.sort(column, sortOrder)
+
+    @__busy_cursor_decorator
+    def upload_data(self):
+        message = 'Do you really want to upload saves for the following games?\n\n'
+        
+        save_list = self.model.retrieve_selected_data()
+
+        for game_name, _ in save_list:
+            message += f'{game_name}\n'
+
+        
+        self.confirmation_box.setText(message)
+        confirmation_choice = self.confirmation_box.exec()
+
+        if confirmation_choice == QMessageBox.StandardButton.Yes:
+            self.model.begin_upload(save_list)
+
 
     def remove_row(self):
         index = self.savesTableView.currentIndex()
