@@ -36,7 +36,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         del_key.activated.connect(self.remove_row)
 
         self.confirmation_box = QMessageBox()
-        self.confirmation_box.setText("Are you sure you want to delete the entry?")
+        self.confirmation_box.setWindowTitle('Are you sure?')
         self.confirmation_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No);
         self.confirmation_box.setDefaultButton(QMessageBox.StandardButton.No)
 
@@ -93,9 +93,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.model.sort(column, sortOrder)
 
     def remove_row(self):
+        index = self.savesTableView.currentIndex()
+        
+        if index.row() == -1:
+            index = self.model.index(self.model.rowCount(index) - 1, 0)    
+        if index.column() != 0:
+            index = index.siblingAtColumn(0)
+
+        game_name = index.data(Qt.ItemDataRole.EditRole)
+
+        self.confirmation_box.setText(f"Are you sure you want stop tracking saves for {game_name}?")
         confirmation_choice = self.confirmation_box.exec()
         if confirmation_choice == QMessageBox.StandardButton.Yes:
-            index = self.savesTableView.currentIndex()
             role = Qt.ItemDataRole.EditRole
             self.model.delete_row(index, role)
 
