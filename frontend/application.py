@@ -6,7 +6,9 @@ from backend.file_discovery import start_discovery
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import Qt, QModelIndex
 from PyQt6.QtGui import QCursor
-from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QMessageBox, QHeaderView
+
+import timeit
 
 qt_creator_file = "./frontend/application.ui"
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qt_creator_file)
@@ -17,9 +19,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         QtWidgets.QMainWindow.__init__(self)
         Ui_MainWindow.__init__(self)
         self.setupUi(self)
+        header=CheckBoxHeader(parent=self.savesTableView)
         self.model = SaveTableModel(None)
         self.savesTableView.setModel(self.model)
+        header.clicked.connect(self.model.select_all)
+        self.savesTableView.setHorizontalHeader(header)
         self.savesTableView.horizontalHeader().setSortIndicator(0, Qt.SortOrder.AscendingOrder)
+        
         self.update_view()
         self.discover_button.clicked.connect(self.discover)
         self.savesTableView.doubleClicked.connect(self.editFilePath)
@@ -105,6 +111,35 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
             self.model.add_row(game_name[0], str(path), index)
         
+class CheckBoxHeader(QHeaderView):
+    clicked=QtCore.pyqtSignal(bool)
+
+    def __init__(self,orientation=Qt.Orientation.Horizontal,parent=None):
+        super(CheckBoxHeader,self).__init__(orientation,parent)
+        self.isChecked=True
+
+    def paintSection(self,painter,rect,logicalIndex):
+        painter.save()
+        super(CheckBoxHeader,self).paintSection(painter,rect,logicalIndex)
+        painter.restore()
+        if logicalIndex==0:
+            option=QtWidgets.QStyleOptionButton()
+            option.rect= QtCore.QRect(3,1,20,20)  #may have to be adapt
+            option.state= QtWidgets.QStyle.StateFlag.State_Enabled | QtWidgets.QStyle.StateFlag.State_Active
+            if self.isChecked:
+                option.state|=QtWidgets.QStyle.StateFlag.State_On
+            else:
+                option.state|=QtWidgets.QStyle.StateFlag.State_Off
+            self.style().drawControl(QtWidgets.QStyle.ControlElement.CE_CheckBox,option,painter)
+
+    def mousePressEvent(self,event):
+        if self.isChecked:
+            self.isChecked=False
+        else:
+            self.isChecked=True
+        self.clicked.emit(self.isChecked)
+        self.viewport().update()
+
 
 if __name__ =='__main__':
     app = QtWidgets.QApplication(sys.argv)
