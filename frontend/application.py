@@ -110,6 +110,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.model.add_row(game_name[0], str(path), index)
         
 class CheckBoxHeader(QHeaderView):
+    ''' Class to add a header checkbox to the first column of horizontal header.
+        Modified from https://stackoverflow.com/questions/30932528/adding-checkbox-as-vertical-header-in-qtableview/30934160#30934160
+    '''
     clicked=QtCore.pyqtSignal(bool)
 
     def __init__(self,orientation=Qt.Orientation.Horizontal,parent=None):
