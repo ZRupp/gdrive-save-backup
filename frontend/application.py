@@ -8,8 +8,6 @@ from PyQt6.QtCore import Qt, QModelIndex
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QMessageBox, QHeaderView
 
-import timeit
-
 qt_creator_file = "./frontend/application.ui"
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qt_creator_file)
 
