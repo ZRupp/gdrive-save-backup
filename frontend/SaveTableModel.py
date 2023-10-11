@@ -167,7 +167,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self.layoutChanged.emit()
 
     def begin_upload(self):
-        data_to_upload = self._retrieve_selected_data()
+        data_to_upload = self.retrieve_selected_data()
 
         for game_name, location in data_to_upload:
             print(game_name, location)
@@ -179,7 +179,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self.layoutChanged.emit()
 
 
-    def _retrieve_selected_data(self):
+    def retrieve_selected_data(self):
         return [row for (row, checked) in zip(self._data, self._checkboxes) if checked]
 
     def _update_underlying_data(self, index: QModelIndex, new_data: str) -> bool:
