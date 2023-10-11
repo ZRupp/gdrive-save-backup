@@ -1,4 +1,5 @@
 import json
+import timeit
 
 def save_to_json(dict_to_save: dict, destination: str) -> None:
     """Simple method for saving dictionary in json format.
@@ -28,3 +29,11 @@ def load_from_json(location: str) -> dict:
         loaded_dict = {}
 
     return loaded_dict
+
+def timer(func):
+    def wrapper(self):
+        start = timeit.default_timer()
+        func(self)
+        end = timeit.default_timer()
+        print(end - start)
+    return wrapper
