@@ -31,9 +31,9 @@ def load_from_json(location: str) -> dict:
     return loaded_dict
 
 def timer(func):
-    def wrapper(self):
+    def wrapper(self, *args):
         start = timeit.default_timer()
-        func(self)
+        func(self, *args)
         end = timeit.default_timer()
         print(end - start)
     return wrapper
