@@ -67,7 +67,10 @@ class GDrive:
     ) -> None:
         """Simple method to upload file to GDrive.
 
-        TODO: Maybe handle uploading entire folders.
+        
+        TODO: There's an issue where put fails if there are subdirectories mixed with the files.
+              Obvious solution is to iterate over each file and upload one by one. Really need
+              to get rid of pydrive2 dependency.
         TODO: Ask users if they want to preserve old saves if they would be deleted otherwise
 
         """
