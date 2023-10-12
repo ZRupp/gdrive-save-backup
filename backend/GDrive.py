@@ -46,16 +46,13 @@ class GDrive:
     def upload_files(self, local_path, upload_path, game_name):
         try:
             if self.file_exists(upload_path):
-                print('HI')
                 if self.file_needs_update(local_path, game_name):
-                    print('hello')
                     # This is probably not ideal since it is a destructive action.
                     self.__fs.rm(upload_path)
                     self.__fs.put(f'{local_path}/*', upload_path, recursive=True)
                 else:
                     print(f"{upload_path} already exists and is up to date.")
             else:
-                print('goodbye')
                 self.__fs.put(f'{local_path}/*', upload_path, recursive=True)
         except Exception as e:
             print(f"Error uploading files from {local_path} to {upload_path}: {e}")
@@ -117,7 +114,6 @@ class GDrive:
     ) -> bool:
         
         metadata = self.get_metadata(game_name)
-        print('checked')
         local_modified_time = datetime.fromtimestamp(
             os.path.getmtime(local_path)
         ).isoformat()
