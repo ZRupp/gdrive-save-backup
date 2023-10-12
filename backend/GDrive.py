@@ -6,6 +6,11 @@ from pathlib import Path
 
 from datetime import datetime
 
+import concurrent.futures
+import threading
+
+from backend.utilities import timer
+
 DEFAULT_GDRIVE_REMOTE_PATH = "root/saves/"
 PATH_TO_TOKENS = Path("./credentials/tokens.json")
 
@@ -35,8 +40,29 @@ class GDrive:
             self.__gauth.LocalWebserverAuth()
         self.__drive = GoogleDrive(self.__gauth)
         self.__fs = GDriveFileSystem("root", google_auth=self.__gauth)
+        self.upload_event = threading.Event()
 
-    def upload_to_g_drive(
+
+    def upload_files(self, local_path, upload_path, game_name):
+        try:
+            if self.file_exists(upload_path):
+                print('HI')
+                if self.file_needs_update(local_path, game_name):
+                    print('hello')
+                    # This is probably not ideal since it is a destructive action.
+                    self.__fs.rm(upload_path)
+                    self.__fs.put(f'{local_path}/*', upload_path, recursive=True)
+                else:
+                    print(f"{upload_path} already exists and is up to date.")
+            else:
+                print('goodbye')
+                self.__fs.put(f'{local_path}/*', upload_path, recursive=True)
+        except Exception as e:
+            print(f"Error uploading files from {local_path} to {upload_path}: {e}")
+        finally:
+            self.upload_event.set()
+
+    def upload_to_gdrive(
         self,
         local_path: str,
         game_name: str,
@@ -48,24 +74,18 @@ class GDrive:
         TODO: Ask users if they want to preserve old saves if they would be deleted otherwise
 
         """
+
         if remote_path == DEFAULT_GDRIVE_REMOTE_PATH:
-            remote_path += f"/{game_name}/"
+            remote_path += game_name
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            for root, dirs, files in os.walk(local_path):
+                if files:
+                    upload_path = remote_path + root.partition(local_path)[-1].replace('\\', '/')
+                    executor.submit(self.upload_files, root, upload_path, game_name)
+                    self.upload_event.wait()
 
-        if self.file_exists(remote_path):
-            if self.file_needs_update(local_path, game_name):
-                # This is probably not ideal since it is a destructive action.
-                self.__fs.rm(remote_path)
+        self.upload_event.clear()
 
-                # I'm leaving recursive=True here in case I want this to work for folders.
-                self.__fs.put(f"{local_path}", remote_path)
-                print(f"Uploaded {local_path} to {remote_path}.")
-            else:
-                print(f"{remote_path} already exists and is up to date.")
-
-        else:
-            # I'm leaving recursive=True here in case I want this to work for folders.
-            self.__fs.put(f"{local_path}", remote_path)
-            print(f"Uploaded {local_path} to {remote_path}.")
 
     def download_from_g_drive(
         self,
@@ -95,7 +115,9 @@ class GDrive:
         game_name: str,
         download=False,
     ) -> bool:
+        
         metadata = self.get_metadata(game_name)
+        print('checked')
         local_modified_time = datetime.fromtimestamp(
             os.path.getmtime(local_path)
         ).isoformat()
@@ -119,8 +141,8 @@ class GDrive:
 
     def get_metadata(self, game_name: str) -> dict:
         """Method to retrieve metada for a file in the user's GDrive."""
-
-        q = {"q": f"title = '{game_name}' and trashed=False"}
+        
+        q = {"q": f'title = "{game_name}" and trashed=False'}
 
         file_list = self.__drive.ListFile(q).GetList()
 
