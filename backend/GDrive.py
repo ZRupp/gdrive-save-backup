@@ -1,21 +1,38 @@
 import os
-from pydrive2.auth import GoogleAuth
+from pydrive2.auth import GoogleAuth, RefreshError
 from pydrive2.drive import GoogleDrive
 from pydrive2.fs import GDriveFileSystem
+from pathlib import Path
 
 from datetime import datetime
 
 DEFAULT_GDRIVE_REMOTE_PATH = "root/saves/"
+PATH_TO_TOKENS = Path("./credentials/tokens.json")
+
 
 class GDrive:
-    """ A Class allowing manipulation of the GoogleDrive object
-    
-        TODO: Remove pydrive2 dependency by interacting directly with GDrive API.
+    """A Class allowing manipulation of the GoogleDrive object
+
+    TODO: Remove pydrive2 dependency by interacting directly with GDrive API.
     """
 
     def __init__(self):
         self.__gauth = GoogleAuth()
-        self.__gauth.LocalWebserverAuth()
+        self.__gauth.LoadCredentialsFile(PATH_TO_TOKENS)
+        try:
+            if not self.__gauth:
+                self.__gauth.LocalWebserverAuth()
+            elif self.__gauth.access_token_expired:
+                self.__gauth.Refresh()
+            else:
+                self.__gauth.Authorize()
+        except RefreshError as e:
+            # Don't like this. Not sure why it sometimes throws a RefreshError when the token is expired.
+            print(e)
+            print("Deleting credentials and reauthenticating.")
+            os.remove(PATH_TO_TOKENS)
+            self.__gauth.credentials = None
+            self.__gauth.LocalWebserverAuth()
         self.__drive = GoogleDrive(self.__gauth)
         self.__fs = GDriveFileSystem("root", google_auth=self.__gauth)
 
@@ -23,7 +40,7 @@ class GDrive:
         self,
         local_path: str,
         game_name: str,
-        remote_path: str = DEFAULT_GDRIVE_REMOTE_PATH
+        remote_path: str = DEFAULT_GDRIVE_REMOTE_PATH,
     ) -> None:
         """Simple method to upload file to GDrive.
 
@@ -32,22 +49,22 @@ class GDrive:
 
         """
         if remote_path == DEFAULT_GDRIVE_REMOTE_PATH:
-            remote_path += f'/{game_name}/'
+            remote_path += f"/{game_name}/"
 
         if self.file_exists(remote_path):
             if self.file_needs_update(local_path, game_name):
                 # This is probably not ideal since it is a destructive action.
-                self.__fs.rm(remote_path, recursive=True)
+                self.__fs.rm(remote_path)
 
                 # I'm leaving recursive=True here in case I want this to work for folders.
-                self.__fs.put(f'{local_path}/*', remote_path, recursive=True)
+                self.__fs.put(f"{local_path}", remote_path)
                 print(f"Uploaded {local_path} to {remote_path}.")
             else:
                 print(f"{remote_path} already exists and is up to date.")
 
         else:
             # I'm leaving recursive=True here in case I want this to work for folders.
-            self.__fs.put(f'{local_path}/*', remote_path, recursive=True)
+            self.__fs.put(f"{local_path}", remote_path)
             print(f"Uploaded {local_path} to {remote_path}.")
 
     def download_from_g_drive(
