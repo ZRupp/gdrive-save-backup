@@ -6,9 +6,6 @@ from pathlib import Path
 
 from datetime import datetime
 
-import concurrent.futures
-import threading
-
 from backend.utilities import timer
 
 DEFAULT_GDRIVE_REMOTE_PATH = "root/saves/"
@@ -40,24 +37,31 @@ class GDrive:
             self.__gauth.LocalWebserverAuth()
         self.__drive = GoogleDrive(self.__gauth)
         self.__fs = GDriveFileSystem("root", google_auth=self.__gauth)
-        self.upload_event = threading.Event()
 
 
     def upload_files(self, local_path, upload_path, game_name):
+        upload_flag = True
         try:
             if self.file_exists(upload_path):
                 if self.file_needs_update(local_path, game_name):
                     # This is probably not ideal since it is a destructive action.
                     self.__fs.rm(upload_path)
-                    self.__fs.put(f'{local_path}/*', upload_path, recursive=True)
+                    
                 else:
+                    upload_flag = False
                     print(f"{upload_path} already exists and is up to date.")
-            else:
-                self.__fs.put(f'{local_path}/*', upload_path, recursive=True)
+            if upload_flag:
+                files = os.listdir(local_path)
+                if [d for d in files if os.path.isdir(os.path.join(local_path, d))]:
+                    files = [f for f in files if os.path.isfile(os.path.join(local_path, f))]
+                    print(files)
+                    for file in files:
+                        self.__fs.put(f'{local_path}/{file}', f'{upload_path}/{file}', recursive=True, mkdir=True)
+
+                else:
+                    self.__fs.put(f'{local_path}/*', upload_path, recursive=True)
         except Exception as e:
             print(f"Error uploading files from {local_path} to {upload_path}: {e}")
-        finally:
-            self.upload_event.set()
 
     def upload_to_gdrive(
         self,
@@ -77,14 +81,11 @@ class GDrive:
 
         if remote_path == DEFAULT_GDRIVE_REMOTE_PATH:
             remote_path += game_name
-        with concurrent.futures.ThreadPoolExecutor() as executor:
             for root, dirs, files in os.walk(local_path):
                 if files:
                     upload_path = remote_path + root.partition(local_path)[-1].replace('\\', '/')
-                    executor.submit(self.upload_files, root, upload_path, game_name)
-                    self.upload_event.wait()
+                    self.upload_files(root, upload_path, game_name)
 
-        self.upload_event.clear()
 
 
     def download_from_g_drive(
