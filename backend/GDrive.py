@@ -4,12 +4,24 @@ from pydrive2.drive import GoogleDrive
 from pydrive2.fs import GDriveFileSystem
 from pathlib import Path
 
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
+
 from datetime import datetime
 
-from backend.utilities import timer
+#from backend.utilities import timer
 
 DEFAULT_GDRIVE_REMOTE_PATH = "root/saves/"
+PATH_TO_CLIENT_CREDS = Path("./credentials/credentials.json")
 PATH_TO_TOKENS = Path("./credentials/tokens.json")
+SCOPES = [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.metadata"
+    ]
 
 
 class GDrive:
@@ -19,6 +31,10 @@ class GDrive:
     """
 
     def __init__(self):
+
+        self.drive_service = self._get_auth_service()
+
+        '''
         self.__gauth = GoogleAuth()
         self.__gauth.LoadCredentialsFile(PATH_TO_TOKENS)
         try:
@@ -146,4 +162,44 @@ class GDrive:
 
         file_list = self.__drive.ListFile(q).GetList()
 
-        return file_list[0]
+        return file_list[0]'''
+
+    def _get_auth_service(self):
+        creds = None
+
+        if os.path.exists(PATH_TO_TOKENS):
+            creds = Credentials.from_authorized_user_file(PATH_TO_TOKENS, SCOPES)
+
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    PATH_TO_CLIENT_CREDS, SCOPES
+                )
+
+                creds = flow.run_local_server()
+            with open(PATH_TO_TOKENS, 'w') as token:
+                token.write(creds.to_json())
+
+        return build('drive', 'v3', credentials=creds)
+
+    def test_upload(self):
+        try:
+            file_metadata = {'name': 'test.txt'}
+            media = MediaFileUpload('test.txt')
+
+            file = self.drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+            print(f'File ID: {file.get("id")}')
+
+        except HttpError as error:
+            print(f'An error occurred: {error}')
+            file = None
+        return file.get('id')
+    
+if __name__ == '__main__':
+    gdrive = GDrive()
+    gdrive.test_upload()
+
+
