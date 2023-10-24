@@ -195,7 +195,7 @@ class GDrive:
 
         return build('drive', 'v3', credentials=creds)
 
-    def remote_folder_exists(self, foldername: str) -> str or None:
+    def get_folder_metadata(self, foldername: str) -> str or None:
         q = f"name = '{foldername}' and mimeType = 'application/vnd.google-apps.folder' and trashed=false"
 
         response = self.drive_service.files().list(q=q, fields='files(id, name, parents)').execute()
@@ -238,7 +238,7 @@ class GDrive:
             parts = Path(path).parts
             folder_name = parts[-1]
             if parts[-1] not in seen_folders:
-                res = self.remote_folder_exists(folder_name)
+                res = self.get_folder_metadata(folder_name)
                 if not res:
                     parents = seen_folders.get(parts[-2]) if len(parts) > 1 else []
 
