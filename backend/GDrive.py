@@ -1,5 +1,5 @@
 import os
-from pydrive2.auth import GoogleAuth, RefreshError
+from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 from pydrive2.fs import GDriveFileSystem
 from pathlib import Path
@@ -10,6 +10,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError
 
 from datetime import datetime
 
@@ -32,7 +33,16 @@ class GDrive:
 
     def __init__(self):
 
-        self.drive_service = self._get_auth_service()
+        
+        try:
+            self.drive_service = self._get_auth_service()   
+        except RefreshError as e:
+            # Don't like this. Not sure why it sometimes throws a RefreshError when the token is expired.
+            print(e)
+            print("Deleting credentials and reauthenticating.")
+            os.remove(PATH_TO_TOKENS)
+            self.drive_service = self._get_auth_service()
+
 
         '''
         self.__gauth = GoogleAuth()
@@ -164,6 +174,7 @@ class GDrive:
 
         return file_list[0]'''
 
+
     def _get_auth_service(self):
         creds = None
 
@@ -184,38 +195,63 @@ class GDrive:
 
         return build('drive', 'v3', credentials=creds)
 
-    def create_gdrive_file(self, filename: str, is_folder: bool = False, parents: list = None) -> MediaFileUpload:
+    def remote_folder_exists(self, foldername: str) -> str or None:
+        q = f"name = '{foldername}' and mimeType = 'application/vnd.google-apps.folder' and trashed=false"
+
+        response = self.drive_service.files().list(q=q, fields='files(id, name, parents)').execute()
+
+        
+        return response.get('files', [])[0] if response.get('files', []) else None
+    
+    def create_folder(self, foldername: str, parents: list = []) -> str:
+        try:
+            file_metadata = {'name': foldername,
+                         'mimeType': 'application/vnd.google-apps.folder',
+                         'parents': parents}
+
+            file = self.drive_service.files().create(body=file_metadata, fields='id').execute()
+        
+        except HttpError as error:
+            print(f'An error occurred: {error}')
+            file = None
+
+        return file.get('id')
+
+    def create_file(self, filename: str, parents: list = []) -> str:
         '''Method to create a file to be uploaded to GDrive'''
 
         try:
-            file_metadata = {'name': filename}
-            if parents:
-                file_metadata['parents'] = parents
-            if is_folder:
-                file_metadata['mimeType'] = 'application/vnd.google-apps.folder'
+            file_metadata = {'name': Path(filename).parts[-1],
+                             'parents': parents}
+            
+            media = MediaFileUpload(filename)
 
-                file = self.drive_service.create(body=file_metadata, fields='id').execute()
-            else:
-                media = MediaFileUpload(filename)
-
-                file = self.drive_service.files().create(uploadType='multipart', body=file_metadata, media_body=media, fields='id').execute()
+            file = self.drive_service.files().create(uploadType='multipart', body=file_metadata, media_body=media, fields='id').execute()
         except HttpError as error:
             print(f'An error occurred: {error}')
             file = None
         return file.get('id')
 
-    def test_upload(self):
-        try:
-            file_metadata = {'name': 'test.txt'}
-            media = MediaFileUpload('test.txt')
-            file = self.drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    def upload_files(self, local_path: str):
+        seen_folders = {}
+        for path, _, files in os.walk(local_path):
+            parts = Path(path).parts
+            folder_name = parts[-1]
+            if parts[-1] not in seen_folders:
+                res = self.remote_folder_exists(folder_name)
+                if not res:
+                    parents = seen_folders.get(parts[-2]) if len(parts) > 1 else []
 
-            print(f'File ID: {file.get("id")}')
+                    file_id = self.create_folder(folder_name, parents)
+                    seen_folders[folder_name] = [file_id]
 
-        except HttpError as error:
-            print(f'An error occurred: {error}')
-            file = None
-        return file.get('id')
+                else:
+                    parents = res['parents']
+                    seen_folders[folder_name] = parents
+            for file in files:
+                self.create_file(f'{path}/{file}', seen_folders[folder_name])
+
+                    
     
 if __name__ == '__main__':
     gdrive = GDrive()
