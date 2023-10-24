@@ -110,7 +110,7 @@ class GDrive:
             print(f'An error occurred: {error}')
             return 
         
-        return response.get('files', [])[0]
+        return response.get('files', [])[0] if response.get('files', []) else None
     
     def get_file_metada(self, filename: str, parents: list) -> str or None:
         try:
@@ -123,7 +123,8 @@ class GDrive:
             print(f'An error occurred: {error}')
             return 
         
-        return response.get('files', [])[0]
+        return response.get('files', [])[0] if response.get('files', []) else None
+    
     def create_folder(self, foldername: str, parents: list = []) -> str:
         '''Method to create and upload a folder to GDrive.
         
@@ -173,16 +174,26 @@ class GDrive:
             return False
         return True        
 
-    def upload_files(self, local_path: str):
-        '''Method for uploading all contents of given path.'''
-
+    def upload_files(self, local_path: str, game_name: str):
+        ''' Method for uploading all contents of given path.
+        
+            TODO: Upload to Saves/game_name
+        '''
         seen_folders = {}
+        existent_game_folder = self.get_folder_metadata(game_name)
+        if not existent_game_folder:
+            game_folder_id = self.create_folder(game_name)
+            seen_folders[game_name] = [game_folder_id]
+        else:
+            game_folder_id = existent_game_folder['id']
+            seen_folders[game_name] = game_folder_id
         for path, _, files in os.walk(local_path):
             parts = Path(path).parts
             folder_name = parts[-1]
             if folder_name not in seen_folders:
                 existent_folder = self.get_folder_metadata(folder_name)
-                parent_folder = seen_folders.get(parts[-2]) if len(parts) > 1 else []
+                parent_folder = seen_folders.get(parts[-2]) if len(parts) > 1 else [game_folder_id]
+                print(seen_folders[game_name], parent_folder)
 
                 if not existent_folder:
                     current_folder_id = self.create_folder(folder_name, parent_folder)
@@ -214,6 +225,6 @@ class GDrive:
     
 if __name__ == '__main__':
     gdrive = GDrive()
-    gdrive.upload_files('./test_upload/')
+    gdrive.upload_files('./test_upload/', 'testytest')
     gdrive.drive_service.close()
 
