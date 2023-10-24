@@ -184,11 +184,30 @@ class GDrive:
 
         return build('drive', 'v3', credentials=creds)
 
+    def create_gdrive_file(self, filename: str, is_folder: bool = False, parents: list = None) -> MediaFileUpload:
+        '''Method to create a file to be uploaded to GDrive'''
+
+        try:
+            file_metadata = {'name': filename}
+            if parents:
+                file_metadata['parents'] = parents
+            if is_folder:
+                file_metadata['mimeType'] = 'application/vnd.google-apps.folder'
+
+                file = self.drive_service.create(body=file_metadata, fields='id').execute()
+            else:
+                media = MediaFileUpload(filename)
+
+                file = self.drive_service.files().create(uploadType='multipart', body=file_metadata, media_body=media, fields='id').execute()
+        except HttpError as error:
+            print(f'An error occurred: {error}')
+            file = None
+        return file.get('id')
+
     def test_upload(self):
         try:
             file_metadata = {'name': 'test.txt'}
             media = MediaFileUpload('test.txt')
-
             file = self.drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
             print(f'File ID: {file.get("id")}')
