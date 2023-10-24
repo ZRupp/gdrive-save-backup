@@ -1,7 +1,4 @@
 import os
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
-from pydrive2.fs import GDriveFileSystem
 from pathlib import Path
 
 from google.auth.transport.requests import Request
@@ -12,7 +9,7 @@ from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 #from backend.utilities import timer
 
@@ -45,75 +42,6 @@ class GDrive:
 
 
         '''
-        self.__gauth = GoogleAuth()
-        self.__gauth.LoadCredentialsFile(PATH_TO_TOKENS)
-        try:
-            if not self.__gauth:
-                self.__gauth.LocalWebserverAuth()
-            elif self.__gauth.access_token_expired:
-                self.__gauth.Refresh()
-            else:
-                self.__gauth.Authorize()
-        except RefreshError as e:
-            # Don't like this. Not sure why it sometimes throws a RefreshError when the token is expired.
-            print(e)
-            print("Deleting credentials and reauthenticating.")
-            os.remove(PATH_TO_TOKENS)
-            self.__gauth.credentials = None
-            self.__gauth.LocalWebserverAuth()
-        self.__drive = GoogleDrive(self.__gauth)
-        self.__fs = GDriveFileSystem("root", google_auth=self.__gauth)
-
-
-    def upload_files(self, local_path, upload_path, game_name):
-        upload_flag = True
-        try:
-            if self.file_exists(upload_path):
-                if self.file_needs_update(local_path, game_name):
-                    # This is probably not ideal since it is a destructive action.
-                    self.__fs.rm(upload_path)
-                    
-                else:
-                    upload_flag = False
-                    print(f"{upload_path} already exists and is up to date.")
-            if upload_flag:
-                files = os.listdir(local_path)
-                if [d for d in files if os.path.isdir(os.path.join(local_path, d))]:
-                    files = [f for f in files if os.path.isfile(os.path.join(local_path, f))]
-                    print(files)
-                    for file in files:
-                        self.__fs.put(f'{local_path}/{file}', f'{upload_path}/{file}', recursive=True, mkdir=True)
-
-                else:
-                    self.__fs.put(f'{local_path}/*', upload_path, recursive=True)
-        except Exception as e:
-            print(f"Error uploading files from {local_path} to {upload_path}: {e}")
-
-    def upload_to_gdrive(
-        self,
-        local_path: str,
-        game_name: str,
-        remote_path: str = DEFAULT_GDRIVE_REMOTE_PATH,
-    ) -> None:
-        """Simple method to upload file to GDrive.
-
-        
-        TODO: There's an issue where put fails if there are subdirectories mixed with the files.
-              Obvious solution is to iterate over each file and upload one by one. Really need
-              to get rid of pydrive2 dependency.
-        TODO: Ask users if they want to preserve old saves if they would be deleted otherwise
-
-        """
-
-        if remote_path == DEFAULT_GDRIVE_REMOTE_PATH:
-            remote_path += game_name
-            for root, dirs, files in os.walk(local_path):
-                if files:
-                    upload_path = remote_path + root.partition(local_path)[-1].replace('\\', '/')
-                    self.upload_files(root, upload_path, game_name)
-
-
-
     def download_from_g_drive(
         self,
         remote_path: str,
@@ -136,24 +64,6 @@ class GDrive:
         else:
             self.__get(remote_path, local_path, recursive=True)
 
-    def file_needs_update(
-        self,
-        local_path: str,
-        game_name: str,
-        download=False,
-    ) -> bool:
-        
-        metadata = self.get_metadata(game_name)
-        local_modified_time = datetime.fromtimestamp(
-            os.path.getmtime(local_path)
-        ).isoformat()
-        remote_modified_time = metadata["modifiedDate"]
-
-        if not download:
-            return local_modified_time > remote_modified_time
-        else:
-            return remote_modified_time > local_modified_time
-
     def file_exists(
         self,
         path: str,
@@ -164,15 +74,7 @@ class GDrive:
             return self.__fs.exists(path)
         else:
             os.path.isfile(path)
-
-    def get_metadata(self, game_name: str) -> dict:
-        """Method to retrieve metada for a file in the user's GDrive."""
-        
-        q = {"q": f'title = "{game_name}" and trashed=False'}
-
-        file_list = self.__drive.ListFile(q).GetList()
-
-        return file_list[0]'''
+        '''
 
 
     def _get_auth_service(self):
@@ -197,14 +99,31 @@ class GDrive:
         return build('drive', 'v3', credentials=creds)
 
     def get_folder_metadata(self, foldername: str) -> str or None:
-        '''Returns folds id, name, and parents if it exists, else None.'''
-        q = f"name = '{foldername}' and mimeType = 'application/vnd.google-apps.folder' and trashed=false"
-
-        response = self.drive_service.files().list(q=q, fields='files(id, name, parents)').execute()
-
+        '''Returns folder id, name, and parents if it exists, else None.'''
         
-        return response.get('files', [])[0] if response.get('files', []) else None
+        try:
+            q = f"name = '{foldername}' and mimeType = 'application/vnd.google-apps.folder' and trashed=false"
+
+            response = self.drive_service.files().list(q=q, fields='files(id, name, parents)').execute()
+        
+        except HttpError as error:
+            print(f'An error occurred: {error}')
+            return 
+        
+        return response.get('files', [])[0]
     
+    def get_file_metada(self, filename: str, parents: list) -> str or None:
+        try:
+            q = f"name = '{filename}' and trashed=false and '{parents[0]}' in parents"
+
+            response = self.drive_service.files().list(q=q, fields='files(id, name, modifiedTime, parents)').execute()
+
+            
+        except HttpError or IndexError as error:
+            print(f'An error occurred: {error}')
+            return 
+        
+        return response.get('files', [])[0]
     def create_folder(self, foldername: str, parents: list = []) -> str:
         '''Method to create and upload a folder to GDrive.
         
@@ -240,6 +159,19 @@ class GDrive:
             print(f'An error occurred: {error}')
             return 
         return file.get('id')
+    
+    def update_file(self, local_file: str, remote_file_id: str) -> bool:
+        '''Method to update an existing file if the local file is newer than the remote file.'''
+
+        try:
+            
+            media = MediaFileUpload(local_file)
+
+            file = self.drive_service.files().update(uploadType='multipart', media_body=media, fileId = remote_file_id).execute()
+        except HttpError as error:
+            print(f'An error occurred: {error}')
+            return False
+        return True        
 
     def upload_files(self, local_path: str):
         '''Method for uploading all contents of given path.'''
@@ -248,24 +180,40 @@ class GDrive:
         for path, _, files in os.walk(local_path):
             parts = Path(path).parts
             folder_name = parts[-1]
-            if parts[-1] not in seen_folders:
-                res = self.get_folder_metadata(folder_name)
-                if not res:
-                    parents = seen_folders.get(parts[-2]) if len(parts) > 1 else []
+            if folder_name not in seen_folders:
+                existent_folder = self.get_folder_metadata(folder_name)
+                parent_folder = seen_folders.get(parts[-2]) if len(parts) > 1 else []
 
-                    file_id = self.create_folder(folder_name, parents)
-                    seen_folders[folder_name] = [file_id]
+                if not existent_folder:
+                    current_folder_id = self.create_folder(folder_name, parent_folder)
+
+                    seen_folders[folder_name] = [current_folder_id]
 
                 else:
-                    parents = res['parents']
-                    seen_folders[folder_name] = parents
+                    current_folder_id = existent_folder['id']
+                    seen_folders[folder_name] = [current_folder_id]
+
             for file in files:
-                self.create_file(f'{path}/{file}', seen_folders[folder_name])
+                
+                file_path = f'{path}/{file}'
+                existent_file = self.get_file_metada(file, [current_folder_id])
+                
+                if not existent_file:
+                    self.create_file(file_path, [current_folder_id])
+                else:
+                    local_modified_time = datetime.fromtimestamp(os.path.getmtime(file_path), tz=timezone.utc).isoformat()
+                    remote_modified_time = existent_file["modifiedTime"]
+
+                    if local_modified_time > remote_modified_time:
+                        if self.update_file(file_path, existent_file.get('id')):
+                            print(f'{file_path} successfully updated.')
+                        else:
+                            print(f'{file_path} not updated.')
 
                     
     
 if __name__ == '__main__':
     gdrive = GDrive()
-    gdrive.test_upload('.')
-
+    gdrive.upload_files('./test_upload/')
+    gdrive.drive_service.close()
 
