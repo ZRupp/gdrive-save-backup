@@ -176,6 +176,7 @@ class GDrive:
 
 
     def _get_auth_service(self):
+        '''Method for creating gdrive authentication service.'''
         creds = None
 
         if os.path.exists(PATH_TO_TOKENS):
@@ -196,6 +197,7 @@ class GDrive:
         return build('drive', 'v3', credentials=creds)
 
     def get_folder_metadata(self, foldername: str) -> str or None:
+        '''Returns folds id, name, and parents if it exists, else None.'''
         q = f"name = '{foldername}' and mimeType = 'application/vnd.google-apps.folder' and trashed=false"
 
         response = self.drive_service.files().list(q=q, fields='files(id, name, parents)').execute()
@@ -204,6 +206,11 @@ class GDrive:
         return response.get('files', [])[0] if response.get('files', []) else None
     
     def create_folder(self, foldername: str, parents: list = []) -> str:
+        '''Method to create and upload a folder to GDrive.
+        
+           Returns the folder id if successful, else None.
+        '''
+
         try:
             file_metadata = {'name': foldername,
                          'mimeType': 'application/vnd.google-apps.folder',
@@ -213,12 +220,14 @@ class GDrive:
         
         except HttpError as error:
             print(f'An error occurred: {error}')
-            file = None
+            return 
 
         return file.get('id')
 
     def create_file(self, filename: str, parents: list = []) -> str:
-        '''Method to create a file to be uploaded to GDrive'''
+        '''Method to create and upload a file to GDrive.
+        
+           Returns the file id if successful, else None.'''
 
         try:
             file_metadata = {'name': Path(filename).parts[-1],
@@ -229,10 +238,12 @@ class GDrive:
             file = self.drive_service.files().create(uploadType='multipart', body=file_metadata, media_body=media, fields='id').execute()
         except HttpError as error:
             print(f'An error occurred: {error}')
-            file = None
+            return 
         return file.get('id')
 
     def upload_files(self, local_path: str):
+        '''Method for uploading all contents of given path.'''
+
         seen_folders = {}
         for path, _, files in os.walk(local_path):
             parts = Path(path).parts
@@ -255,6 +266,6 @@ class GDrive:
     
 if __name__ == '__main__':
     gdrive = GDrive()
-    gdrive.test_upload()
+    gdrive.test_upload('.')
 
 
