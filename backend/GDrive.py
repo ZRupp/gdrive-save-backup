@@ -1,6 +1,6 @@
 import os
+import logging
 from pathlib import Path
-
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -8,18 +8,25 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
-
 from datetime import datetime, timezone
 
-#from backend.utilities import timer
+# from backend.utilities import timer
+
+logging.basicConfig(
+    filename="./logs/gdrive_log.log",
+    format="%(asctime)s %(message)s",
+    level=logging.INFO,
+    filemode="w",
+)
+logger = logging.getLogger()
 
 DEFAULT_GDRIVE_REMOTE_PATH = "root/saves/"
 PATH_TO_CLIENT_CREDS = Path("./credentials/credentials.json")
 PATH_TO_TOKENS = Path("./credentials/tokens.json")
 SCOPES = [
-        "https://www.googleapis.com/auth/drive",
-        "https://www.googleapis.com/auth/drive.metadata"
-    ]
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/drive.metadata",
+]
 
 
 class GDrive:
@@ -29,17 +36,13 @@ class GDrive:
     """
 
     def __init__(self):
-
-        
         try:
-            self.drive_service = self._get_auth_service()   
+            self.drive_service = self._get_auth_service()
         except RefreshError as e:
-            # Don't like this. Not sure why it sometimes throws a RefreshError when the token is expired.
-            print(e)
-            print("Deleting credentials and reauthenticating.")
+            logger.error(f"Error during authentication: {e}")
+            logger.info("Deleting credentials and reauthenticating.")
             os.remove(PATH_TO_TOKENS)
             self.drive_service = self._get_auth_service()
-
 
         '''
     def download_from_g_drive(
@@ -76,14 +79,11 @@ class GDrive:
             os.path.isfile(path)
         '''
 
-
     def _get_auth_service(self):
-        '''Method for creating gdrive authentication service.'''
         creds = None
 
         if os.path.exists(PATH_TO_TOKENS):
             creds = Credentials.from_authorized_user_file(PATH_TO_TOKENS, SCOPES)
-
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
@@ -93,107 +93,132 @@ class GDrive:
                 )
 
                 creds = flow.run_local_server()
-            with open(PATH_TO_TOKENS, 'w') as token:
+            with open(PATH_TO_TOKENS, "w") as token:
                 token.write(creds.to_json())
 
-        return build('drive', 'v3', credentials=creds)
+        return build("drive", "v3", credentials=creds)
 
     def get_folder_metadata(self, foldername: str) -> str or None:
-        '''Returns folder id, name, and parents if it exists, else None.'''
-        
+        """Returns folder id, name, and parents if it exists, else None."""
+
         try:
             q = f"name = '{foldername}' and mimeType = 'application/vnd.google-apps.folder' and trashed=false"
 
-            response = self.drive_service.files().list(q=q, fields='files(id, name, parents)').execute()
-        
+            response = (
+                self.drive_service.files()
+                .list(q=q, fields="files(id, name, parents)")
+                .execute()
+            )
+
         except HttpError as error:
-            print(f'An error occurred: {error}')
-            return 
-        
-        return response.get('files', [])[0] if response.get('files', []) else None
-    
+            logger.error(f"An error occurred: {error}")
+            return
+
+        return response.get("files", [])[0] if response.get("files", []) else None
+
     def get_file_metada(self, filename: str, parents: list) -> str or None:
         try:
             q = f"name = '{filename}' and trashed=false and '{parents[0]}' in parents"
 
-            response = self.drive_service.files().list(q=q, fields='files(id, name, modifiedTime, parents)').execute()
+            response = (
+                self.drive_service.files()
+                .list(q=q, fields="files(id, name, modifiedTime, parents)")
+                .execute()
+            )
 
-            
         except HttpError or IndexError as error:
-            print(f'An error occurred: {error}')
-            return 
-        
-        return response.get('files', [])[0] if response.get('files', []) else None
-    
+            logger.error(f"An error occurred: {error}")
+            return
+
+        return response.get("files", [])[0] if response.get("files", []) else None
+
     def create_folder(self, foldername: str, parents: list = []) -> str:
-        '''Method to create and upload a folder to GDrive.
-        
-           Returns the folder id if successful, else None.
-        '''
+        """Method to create and upload a folder to GDrive.
+
+        Returns the folder id if successful, else None.
+        """
 
         try:
-            file_metadata = {'name': foldername,
-                         'mimeType': 'application/vnd.google-apps.folder',
-                         'parents': parents}
+            file_metadata = {
+                "name": foldername,
+                "mimeType": "application/vnd.google-apps.folder",
+                "parents": parents,
+            }
 
-            file = self.drive_service.files().create(body=file_metadata, fields='id').execute()
-        
+            file = (
+                self.drive_service.files()
+                .create(body=file_metadata, fields="id")
+                .execute()
+            )
+
         except HttpError as error:
-            print(f'An error occurred: {error}')
-            return 
+            logger.error(f"An error occurred: {error}")
+            return
 
-        return file.get('id')
+        return file.get("id")
 
     def create_file(self, filename: str, parents: list = []) -> str:
-        '''Method to create and upload a file to GDrive.
-        
-           Returns the file id if successful, else None.'''
+        """Method to create and upload a file to GDrive.
+
+        Returns the file id if successful, else None."""
 
         try:
-            file_metadata = {'name': Path(filename).parts[-1],
-                             'parents': parents}
-            
+            file_metadata = {"name": Path(filename).parts[-1], "parents": parents}
+
             media = MediaFileUpload(filename)
 
-            file = self.drive_service.files().create(uploadType='multipart', body=file_metadata, media_body=media, fields='id').execute()
+            file = (
+                self.drive_service.files()
+                .create(
+                    uploadType="multipart",
+                    body=file_metadata,
+                    media_body=media,
+                    fields="id",
+                )
+                .execute()
+            )
         except HttpError as error:
-            print(f'An error occurred: {error}')
-            return 
-        return file.get('id')
-    
+            logger.error(f"An error occurred: {error}")
+            return
+        return file.get("id")
+
     def update_file(self, local_file: str, remote_file_id: str) -> bool:
-        '''Method to update an existing file if the local file is newer than the remote file.'''
+        """Method to update an existing file if the local file is newer than the remote file."""
 
         try:
-            
             media = MediaFileUpload(local_file)
 
-            file = self.drive_service.files().update(uploadType='multipart', media_body=media, fileId = remote_file_id).execute()
+            file = (
+                self.drive_service.files()
+                .update(uploadType="multipart", media_body=media, fileId=remote_file_id)
+                .execute()
+            )
         except HttpError as error:
-            print(f'An error occurred: {error}')
+            logger.error(f"An error occurred: {error}")
             return False
-        return True        
+        return True
 
     def upload_files(self, local_path: str, game_name: str):
-        ''' Method for uploading all contents of given path.
-        
-            TODO: Upload to Saves/game_name
-        '''
+        """Method for uploading all contents of given path.
+
+        TODO: Upload to Saves/game_name
+        """
         seen_folders = {}
         existent_game_folder = self.get_folder_metadata(game_name)
         if not existent_game_folder:
             game_folder_id = self.create_folder(game_name)
             seen_folders[game_name] = [game_folder_id]
         else:
-            game_folder_id = existent_game_folder['id']
+            game_folder_id = existent_game_folder["id"]
             seen_folders[game_name] = game_folder_id
         for path, _, files in os.walk(local_path):
             parts = Path(path).parts
             folder_name = parts[-1]
             if folder_name not in seen_folders:
                 existent_folder = self.get_folder_metadata(folder_name)
-                parent_folder = seen_folders.get(parts[-2]) if len(parts) > 1 else [game_folder_id]
-                print(seen_folders[game_name], parent_folder)
+                parent_folder = (
+                    seen_folders.get(parts[-2]) if len(parts) > 1 else [game_folder_id]
+                )
 
                 if not existent_folder:
                     current_folder_id = self.create_folder(folder_name, parent_folder)
@@ -201,30 +226,32 @@ class GDrive:
                     seen_folders[folder_name] = [current_folder_id]
 
                 else:
-                    current_folder_id = existent_folder['id']
+                    current_folder_id = existent_folder["id"]
                     seen_folders[folder_name] = [current_folder_id]
 
             for file in files:
-                
-                file_path = f'{path}/{file}'
+                file_path = f"{path}/{file}"
                 existent_file = self.get_file_metada(file, [current_folder_id])
-                
+
                 if not existent_file:
                     self.create_file(file_path, [current_folder_id])
                 else:
-                    local_modified_time = datetime.fromtimestamp(os.path.getmtime(file_path), tz=timezone.utc).isoformat()
+                    local_modified_time = datetime.fromtimestamp(
+                        os.path.getmtime(file_path), tz=timezone.utc
+                    ).isoformat()
                     remote_modified_time = existent_file["modifiedTime"]
 
                     if local_modified_time > remote_modified_time:
-                        if self.update_file(file_path, existent_file.get('id')):
-                            print(f'{file_path} successfully updated.')
+                        logger.info(f"{file_path} updating.")
+                        if self.update_file(file_path, existent_file.get("id")):
+                            logger.info(f"{file_path} successfully updated.")
                         else:
-                            print(f'{file_path} not updated.')
+                            logger.info(f"{file_path} not updated.")
+                    else:
+                        logger.info(f"{file_path} already up-to-date.")
 
-                    
-    
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     gdrive = GDrive()
-    gdrive.upload_files('./test_upload/', 'testytest')
+    gdrive.upload_files("./test_upload/", "testytest")
     gdrive.drive_service.close()
-
