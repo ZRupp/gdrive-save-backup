@@ -18,9 +18,9 @@ logging.basicConfig(
     level=logging.INFO,
     filemode="w",
 )
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
-DEFAULT_GDRIVE_REMOTE_PATH = "root/saves/"
+DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER = "root/testerson/"
 PATH_TO_CLIENT_CREDS = Path("./credentials/credentials.json")
 PATH_TO_TOKENS = Path("./credentials/tokens.json")
 SCOPES = [
@@ -43,6 +43,19 @@ class GDrive:
             logger.info("Deleting credentials and reauthenticating.")
             os.remove(PATH_TO_TOKENS)
             self.drive_service = self._get_auth_service()
+        self.folder_ids = {'root': 'root'}
+        self.initialize_folder_structure()
+
+    def initialize_folder_structure(self):
+        parts = Path(DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER).parts
+        for part in parts:
+            existent_folder = self.get_folder_metadata(part)
+            if part == 'root':
+                folder_id = self.folder_ids['root']
+            if not existent_folder:
+                logger.info(f'Adding {part} to GDrive')
+                folder_id = [self.create_folder(part, folder_id)]
+                self.folder_ids[part] = folder_id
 
         '''
     def download_from_g_drive(
