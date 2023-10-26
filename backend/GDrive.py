@@ -20,7 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER = "root/testerson/"
+DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER = "root/saves/"
 PATH_TO_CLIENT_CREDS = Path("./credentials/credentials.json")
 PATH_TO_TOKENS = Path("./credentials/tokens.json")
 SCOPES = [
@@ -40,7 +40,7 @@ class GDrive:
             self.drive_service = self._get_auth_service()
         except RefreshError as e:
             logger.error(f"Error during authentication: {e}")
-            logger.info("Deleting credentials and reauthenticating.")
+            logger.info(f"Deleting {PATH_TO_TOKENS} and reauthenticating.")
             os.remove(PATH_TO_TOKENS)
             self.drive_service = self._get_auth_service()
         self.folder_ids = {'root': 'root'}
@@ -54,8 +54,11 @@ class GDrive:
                 folder_id = self.folder_ids['root']
             if not existent_folder:
                 logger.info(f'Adding {part} to GDrive')
-                folder_id = [self.create_folder(part, folder_id)]
+                folder_id = self.create_folder(part, [folder_id])
                 self.folder_ids[part] = folder_id
+            else:
+                self.folder_ids[part] = self.get_folder_metadata(part)['id']
+                print(self.folder_ids)
 
         '''
     def download_from_g_drive(
@@ -210,58 +213,73 @@ class GDrive:
             logger.error(f"An error occurred: {error}")
             return False
         return True
+    
+    def folder_processor(self, folder_name: str, parent_folder: str) -> str:
+        existent_folder = self.get_folder_metadata(folder_name)
+        if not existent_folder:
+            current_folder_id = self.create_folder(folder_name, [parent_folder])
+            self.folder_ids[folder_name] = current_folder_id
+
+        else:
+            current_folder_id = existent_folder["id"]
+            self.folder_ids[folder_name] = current_folder_id
+        
+        return current_folder_id
+    
+    def file_processor(self, path: str, file: str, current_folder_id) -> str:
+        file_path = f"{path}/{file}"
+        existent_file = self.get_file_metada(file, [current_folder_id])
+
+        if not existent_file:
+            file_id = self.create_file(file_path, [current_folder_id])
+        else:
+            file_id = existent_file['id']
+            local_modified_time = datetime.fromtimestamp(
+                os.path.getmtime(file_path), tz=timezone.utc
+            ).isoformat()
+            remote_modified_time = existent_file["modifiedTime"]
+
+            if local_modified_time > remote_modified_time:
+                logger.info(f"{file_path} updating.")
+                if self.update_file(file_path, existent_file.get("id")):
+                    logger.info(f"{file_path} successfully updated.")
+                else:
+                    logger.info(f"{file_path} not updated.")
+            else:
+                logger.info(f"{file_path} already up-to-date.")
+        
+        return file_id
 
     def upload_files(self, local_path: str, game_name: str):
         """Method for uploading all contents of given path.
 
         TODO: Upload to Saves/game_name
         """
-        seen_folders = {}
+        top_folder = Path(local_path).parts[-1]
+        # Make a folder for the game's saves
         existent_game_folder = self.get_folder_metadata(game_name)
         if not existent_game_folder:
-            game_folder_id = self.create_folder(game_name)
-            seen_folders[game_name] = [game_folder_id]
+            logger.info(f"{game_name} doesn't exist. Attempting to create.")
+            # Get the parent id
+            parent = self.folder_ids[Path(DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER).parts[-1]]
+            
+            game_folder_id = self.create_folder(game_name, [parent]) 
+            self.folder_ids[game_name] = game_folder_id
+            logger.info(f'{game_name} folder created.')
         else:
+            logger.info(f'{game_name} folder exists.')
             game_folder_id = existent_game_folder["id"]
-            seen_folders[game_name] = game_folder_id
+            self.folder_ids[game_name] = game_folder_id
+        current_folder_id = game_folder_id
         for path, _, files in os.walk(local_path):
             parts = Path(path).parts
-            folder_name = parts[-1]
-            if folder_name not in seen_folders:
-                existent_folder = self.get_folder_metadata(folder_name)
-                parent_folder = (
-                    seen_folders.get(parts[-2]) if len(parts) > 1 else [game_folder_id]
-                )
-
-                if not existent_folder:
-                    current_folder_id = self.create_folder(folder_name, parent_folder)
-
-                    seen_folders[folder_name] = [current_folder_id]
-
-                else:
-                    current_folder_id = existent_folder["id"]
-                    seen_folders[folder_name] = [current_folder_id]
+            folder_name = parts[-1] if parts[-1] != top_folder else game_name
+            logger.info(f'Processing {folder_name} folder.')
+            current_folder_id = self.folder_processor(folder_name, current_folder_id)
+            logger.info(f'Folder {folder_name} processed. Folder id is: {current_folder_id}.')
 
             for file in files:
-                file_path = f"{path}/{file}"
-                existent_file = self.get_file_metada(file, [current_folder_id])
-
-                if not existent_file:
-                    self.create_file(file_path, [current_folder_id])
-                else:
-                    local_modified_time = datetime.fromtimestamp(
-                        os.path.getmtime(file_path), tz=timezone.utc
-                    ).isoformat()
-                    remote_modified_time = existent_file["modifiedTime"]
-
-                    if local_modified_time > remote_modified_time:
-                        logger.info(f"{file_path} updating.")
-                        if self.update_file(file_path, existent_file.get("id")):
-                            logger.info(f"{file_path} successfully updated.")
-                        else:
-                            logger.info(f"{file_path} not updated.")
-                    else:
-                        logger.info(f"{file_path} already up-to-date.")
+                file_id = self.file_processor(path, file, current_folder_id)
 
 
 if __name__ == "__main__":
