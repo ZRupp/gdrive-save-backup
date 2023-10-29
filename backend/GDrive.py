@@ -30,21 +30,33 @@ SCOPES = [
 
 
 class GDrive:
-    """A Class allowing manipulation of the GoogleDrive object
-
-    TODO: Remove pydrive2 dependency by interacting directly with GDrive API.
-    """
-
     def __init__(self):
-        try:
-            self.drive_service = self._get_auth_service()
-        except RefreshError as e:
-            logger.error(f"Error during authentication: {e}")
-            logger.info(f"Deleting {PATH_TO_TOKENS} and reauthenticating.")
-            os.remove(PATH_TO_TOKENS)
-            self.drive_service = self._get_auth_service()
-        self.folder_ids = {'root': self.drive_service.files().get(fileId='root', fields='id').execute()['id']}
+        self.drive_service = self._get_auth_service()
+        self.folder_ids = {'root': self._get_root_folder_id()}
         self.initialize_folder_structure()
+
+    def _get_auth_service(self):
+        creds = self._get_credentials()
+        return build("drive", "v3", credentials=creds)
+
+    def _get_credentials(self):
+        creds = Credentials.from_authorized_user_file(PATH_TO_TOKENS, SCOPES)
+        if not creds or not creds.valid:
+            creds = self._refresh_credentials(creds)
+        return creds
+
+    def _refresh_credentials(self, creds):
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(PATH_TO_CLIENT_CREDS, SCOPES)
+            creds = flow.run_local_server()
+            with open(PATH_TO_TOKENS, "w") as token:
+                token.write(creds.to_json())
+        return creds
+
+    def _get_root_folder_id(self):
+        return self.drive_service.files().get(fileId='root', fields='id').execute()['id']
 
     def initialize_folder_structure(self):
         parts = Path(DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER).parts
