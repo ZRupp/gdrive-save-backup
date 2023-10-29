@@ -248,12 +248,7 @@ class GDrive:
 
         return file_id
 
-    def upload_files(self, local_path: str, game_name: str):
-        """Method for uploading all contents of given path.
-
-        TODO: Upload to Saves/game_name
-        """
-        top_folder = Path(local_path).parts[-1]
+    def build_game_folder(self, game_name: str):
         saves_id = self.folder_ids[Path(DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER).parts[-1]]
         # Make a folder for the game's saves
         existent_game_folder = self.get_folder_metadata(game_name, saves_id)
@@ -270,6 +265,13 @@ class GDrive:
             game_folder_id = existent_game_folder["id"]
             self.folder_ids[game_name] = game_folder_id
 
+    def upload_files(self, local_path: str, game_name: str):
+        """Method for uploading all contents of given path.
+
+        TODO: Upload to Saves/game_name
+        """
+        top_folder = Path(local_path).parts[-1]
+        self.build_game_folder(game_name)
         for path, dirs, files in os.walk(local_path):
             parts = Path(path).parts
             parent_folder_id = (
