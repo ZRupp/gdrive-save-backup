@@ -278,19 +278,18 @@ class GDrive:
             self.folder_ids[game_name] = game_folder_id
         
         for path, dirs, files in os.walk(local_path):
-            print(path, dirs)
             parts = Path(path).parts
             parent_folder_id = self.folder_ids[path] if parts[-1] != top_folder else self.folder_ids[game_name]
             for folder_name in dirs:
-                print(folder_name)
-                logger.info(f'Processing {path} folder.')
+                logger.info(f'Processing {path}\\{folder_name} folder.')
                 folder_id = self.folder_processor(folder_name, parent_folder_id)
                 self.folder_ids[f"{path}\\{folder_name}"] = folder_id
-                print(self.folder_ids)
-                logger.info(f'Folder {path} processed. Folder id is: {folder_id}.')
+                logger.info(f'Folder {path}\\{folder_name} processed. Folder id is: {folder_id}.')
 
             for file in files:
+                logger.info(f'Processing {path}\\{file}.')
                 file_id = self.file_processor(path, file, parent_folder_id)
+                logger.info(f'{path}\\{file} processed. File id is: {file_id}.')
 
 
 if __name__ == "__main__":
