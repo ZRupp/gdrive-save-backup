@@ -216,11 +216,11 @@ class GDrive:
         return True
 
     def folder_processor(self, folder_name: str, parent_folder: str) -> str:
-        current_folder_id = self.get_folder_metadata(folder_name, parent_folder).get(
-            "id"
-        )
-        if not current_folder_id:
+        existent_folder = self.get_folder_metadata(folder_name, parent_folder)
+        if not existent_folder:
             current_folder_id = self.create_folder(folder_name, [parent_folder])
+        else:
+            current_folder_id = existent_folder["id"]
 
         return current_folder_id
 
