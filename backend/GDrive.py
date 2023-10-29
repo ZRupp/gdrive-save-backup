@@ -32,7 +32,7 @@ SCOPES = [
 class GDrive:
     def __init__(self):
         self.drive_service = self._get_auth_service()
-        self.folder_ids = {'root': self._get_root_folder_id()}
+        self.folder_ids = {"root": self._get_root_folder_id()}
         self.initialize_folder_structure()
 
     def _get_auth_service(self):
@@ -49,32 +49,35 @@ class GDrive:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(PATH_TO_CLIENT_CREDS, SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                PATH_TO_CLIENT_CREDS, SCOPES
+            )
             creds = flow.run_local_server()
             with open(PATH_TO_TOKENS, "w") as token:
                 token.write(creds.to_json())
         return creds
 
     def _get_root_folder_id(self):
-        return self.drive_service.files().get(fileId='root', fields='id').execute()['id']
+        return (
+            self.drive_service.files().get(fileId="root", fields="id").execute()["id"]
+        )
 
     def initialize_folder_structure(self):
         parts = Path(DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER).parts
         parent = None
         for part in parts:
-            if part == 'root':
-                folder_id = self.folder_ids['root']
+            if part == "root":
+                folder_id = self.folder_ids["root"]
             else:
                 parent = folder_id
                 existent_folder = self.get_folder_metadata(part)
                 if not existent_folder:
-                    logger.info(f'Adding {part} to GDrive')
+                    logger.info(f"Adding {part} to GDrive")
                     folder_id = self.create_folder(part, [folder_id])
                     self.folder_ids[part] = folder_id
                 else:
-                    logger.info(f'{part} already exists.')
-                    self.folder_ids[part] = self.get_folder_metadata(part, parent)['id']
-    
+                    logger.info(f"{part} already exists.")
+                    self.folder_ids[part] = self.get_folder_metadata(part, parent)["id"]
 
         '''
     def download_from_g_drive(
@@ -211,19 +214,16 @@ class GDrive:
             logger.error(f"An error occurred: {error}")
             return False
         return True
-    
-    def folder_processor(self, folder_name: str, parent_folder: str) -> str:
-        existent_folder = self.get_folder_metadata(folder_name, parent_folder)
-        if not existent_folder:
-            current_folder_id = self.create_folder(folder_name, [parent_folder])
-            #self.folder_ids[folder_name] = current_folder_id
 
-        else:
-            current_folder_id = existent_folder["id"]
-            #self.folder_ids[folder_name] = current_folder_id
-        
+    def folder_processor(self, folder_name: str, parent_folder: str) -> str:
+        current_folder_id = self.get_folder_metadata(folder_name, parent_folder).get(
+            "id"
+        )
+        if not current_folder_id:
+            current_folder_id = self.create_folder(folder_name, [parent_folder])
+
         return current_folder_id
-    
+
     def file_processor(self, path: str, file: str, current_folder_id) -> str:
         file_path = f"{path}/{file}"
         existent_file = self.get_file_metada(file, [current_folder_id])
@@ -231,7 +231,7 @@ class GDrive:
         if not existent_file:
             file_id = self.create_file(file_path, [current_folder_id])
         else:
-            file_id = existent_file['id']
+            file_id = existent_file["id"]
             local_modified_time = datetime.fromtimestamp(
                 os.path.getmtime(file_path), tz=timezone.utc
             ).isoformat()
@@ -245,7 +245,7 @@ class GDrive:
                     logger.info(f"{file_path} not updated.")
             else:
                 logger.info(f"{file_path} already up-to-date.")
-        
+
         return file_id
 
     def upload_files(self, local_path: str, game_name: str):
@@ -261,31 +261,40 @@ class GDrive:
             logger.info(f"{game_name} doesn't exist. Attempting to create.")
             # Get the parent id
             parent = saves_id
-            
-            game_folder_id = self.create_folder(game_name, [parent]) 
+
+            game_folder_id = self.create_folder(game_name, [parent])
             self.folder_ids[game_name] = game_folder_id
-            logger.info(f'{game_name} folder created.')
+            logger.info(f"{game_name} folder created.")
         else:
-            logger.info(f'{game_name} folder exists.')
+            logger.info(f"{game_name} folder exists.")
             game_folder_id = existent_game_folder["id"]
             self.folder_ids[game_name] = game_folder_id
-        
+
         for path, dirs, files in os.walk(local_path):
             parts = Path(path).parts
-            parent_folder_id = self.folder_ids[path] if parts[-1] != top_folder else self.folder_ids[game_name]
+            parent_folder_id = (
+                self.folder_ids[path]
+                if parts[-1] != top_folder
+                else self.folder_ids[game_name]
+            )
             for folder_name in dirs:
-                logger.info(f'Processing {path}\\{folder_name} folder.')
+                logger.info(f"Processing {path}\\{folder_name} folder.")
                 folder_id = self.folder_processor(folder_name, parent_folder_id)
                 self.folder_ids[f"{path}\\{folder_name}"] = folder_id
-                logger.info(f'Folder {path}\\{folder_name} processed. Folder id is: {folder_id}.')
+                logger.info(
+                    f"Folder {path}\\{folder_name} processed. Folder id is: {folder_id}."
+                )
 
             for file in files:
-                logger.info(f'Processing {path}\\{file}.')
+                logger.info(f"Processing {path}\\{file}.")
                 file_id = self.file_processor(path, file, parent_folder_id)
-                logger.info(f'{path}\\{file} processed. File id is: {file_id}.')
+                logger.info(f"{path}\\{file} processed. File id is: {file_id}.")
 
 
 if __name__ == "__main__":
     gdrive = GDrive()
-    gdrive.upload_files(Path("C:/Users/socia/AppData/LocalLow/RedHook/Darkest Dungeon II/SaveFiles"), "Darkest Dungeon")
+    gdrive.upload_files(
+        Path("C:/Users/socia/AppData/LocalLow/RedHook/Darkest Dungeon II/SaveFiles"),
+        "Darkest Dungeon",
+    )
     gdrive.drive_service.close()
