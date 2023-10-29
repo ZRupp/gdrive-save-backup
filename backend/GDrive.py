@@ -111,25 +111,6 @@ class GDrive:
             os.path.isfile(path)
         '''
 
-    def _get_auth_service(self):
-        creds = None
-
-        if os.path.exists(PATH_TO_TOKENS):
-            creds = Credentials.from_authorized_user_file(PATH_TO_TOKENS, SCOPES)
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    PATH_TO_CLIENT_CREDS, SCOPES
-                )
-
-                creds = flow.run_local_server()
-            with open(PATH_TO_TOKENS, "w") as token:
-                token.write(creds.to_json())
-
-        return build("drive", "v3", credentials=creds)
-
     def get_folder_metadata(self, foldername: str, parent: str = None) -> str or None:
         """Returns folder id, name, and parents if it exists, else None."""
 
