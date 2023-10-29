@@ -166,11 +166,13 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit(index, index, [role])
         self.layoutChanged.emit()
 
-    def begin_upload(self, data_to_upload: list):
+    def begin_upload(self, data_to_upload: list) -> bool:
 
         for game_name, location in data_to_upload:
             print(game_name, location)
-            self._g_drive.upload_to_gdrive(location, game_name)
+            self._g_drive.upload_files(location, game_name)
+        
+        return True
 
 
     def select_all(self, isChecked: bool) -> bool:
