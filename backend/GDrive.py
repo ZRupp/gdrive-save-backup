@@ -36,11 +36,19 @@ class GDrive:
         self.initialize_folder_structure()
 
     def _get_auth_service(self):
-        creds = self._get_credentials()
+        try:
+            creds = self._get_credentials()
+        except RefreshError as e:
+            logger.error(f"Error during authentication: {e}")
+            logger.info("Deleting credentials and reauthenticating.")
+            os.remove(PATH_TO_TOKENS)
+            return self._get_auth_service()
         return build("drive", "v3", credentials=creds)
 
     def _get_credentials(self):
-        creds = Credentials.from_authorized_user_file(PATH_TO_TOKENS, SCOPES)
+        creds = None
+        if os.path.exists(PATH_TO_TOKENS):
+            creds = Credentials.from_authorized_user_file(PATH_TO_TOKENS, SCOPES)
         if not creds or not creds.valid:
             creds = self._refresh_credentials(creds)
         return creds
