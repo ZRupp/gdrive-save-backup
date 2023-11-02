@@ -1,3 +1,4 @@
+import typing
 from SaveTableModel import SaveTableModel
 import sys
 sys.path[0] += '\\..'
@@ -108,23 +109,36 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         confirmation_choice = self.confirmation_box.exec()
 
         if confirmation_choice == QMessageBox.StandardButton.Yes:
-            
-            self.progress = QProgressDialog(self)
-            self.progress.hide()
-            self.upload_thread = UploadHelper(self.model.begin_upload)
-            self.upload_thread.started.connect(self.handle_thread_start)
-            self.upload_thread.update_signal.connect(self.update_dialog)
-            self.upload_thread.finished.connect(self.handle_thread_finish)
-            self.progress.canceled.connect(self.cancel_dialog)
-            self.upload_thread.set_save_list(save_list)
+            self.progress = self.create_progress_dialog()
+            self.upload_thread = self.create_upload_thread(save_list)
             self.upload_thread.start()
 
+    def create_upload_thread(self, save_list: list):
+        upload_thread = UploadHelper(self.model.begin_upload)
+        upload_thread.started.connect(self.handle_thread_start)
+        upload_thread.update_signal.connect(self.update_dialog)
+        upload_thread.finished.connect(self.handle_thread_finish)
+        upload_thread.set_save_list(save_list)    
+
+        return upload_thread
+
+    def create_progress_dialog(self):
+        progress = CleanupProcessingProgressDialog()
+        progress.hide()
+        progress.userCancel.connect(self.cancel_dialog)
+
+        return progress
+
     def update_dialog(self, value: int, label: str):
-        self.progress.setLabelText(label)
+        self.progress.setLabelText(f"Uploading {label}...")
         self.progress.setValue(value)
 
     def cancel_dialog(self):
         if self.upload_thread.isRunning():
+            label_text = self.progress.labelText()
+            self.progress.setLabelText(f"Finishing {label_text[0].lower() + label_text[1:]}. Please wait.")
+            self.progress.setCancelButtonText("Please Wait.")
+            self.progress.setDisabled(True)
             self.upload_thread.handle_cancelation()
             self.upload_thread.quit()
             
@@ -140,8 +154,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.progress.setLabelText("Uploading saves...")
         self.progress.show()
         
-        
-
     def handle_thread_finish(self):
         self.progress.close()
 
@@ -170,6 +182,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if game_name[1]:
         
             self.model.add_row(game_name[0], str(path), index)
+
+class CleanupProcessingProgressDialog(QProgressDialog):
+    userCancel = QtCore.pyqtSignal()
+    
+    def __init__(self):
+        super().__init__()
+        cancelButton = self.findChild(QtWidgets.QPushButton)
+        cancelButton.clicked.disconnect(self.canceled)
+        cancelButton.clicked.connect(self.userCancel)
+
+        
+
+    def reject(self):
+        pass
+
+    def closeEvent(self, event) -> None:
+        if event.spontaneous:
+            event.ignore()
 
 class UploadHelper(QThread):
     update_signal = QtCore.pyqtSignal(int, str)
