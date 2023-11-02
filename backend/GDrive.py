@@ -35,6 +35,12 @@ class GDrive:
         self.folder_ids = {"root": self._get_root_folder_id()}
         self.initialize_folder_structure()
 
+    def __del__(self):
+        logger.info('Closing drive service.')
+        if self.drive_service:
+            self.drive_service.close()
+        logger.info('Drive service closed.')
+
     def _get_auth_service(self):
         try:
             creds = self._get_credentials()
