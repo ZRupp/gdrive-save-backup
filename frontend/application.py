@@ -101,21 +101,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.model.sort(column, sortOrder)
 
     def upload_data(self):
-        message = 'Do you really want to upload saves for the following games?\n\n'
         
         save_list = self.model.retrieve_selected_data()
+        if save_list:
+            message = 'Do you really want to upload saves for the following games?\n\n'
+            for game_name, _ in save_list:
+                message += f'{game_name}\n'
 
-        for game_name, _ in save_list:
-            message += f'{game_name}\n'
+            
+            self.confirmation_box.setText(message)
+            confirmation_choice = self.confirmation_box.exec()
 
-        
-        self.confirmation_box.setText(message)
-        confirmation_choice = self.confirmation_box.exec()
-
-        if confirmation_choice == QMessageBox.StandardButton.Yes:
-            self.progress = self.create_progress_dialog()
-            self.upload_thread = self.create_upload_thread(save_list)
-            self.upload_thread.start()
+            if confirmation_choice == QMessageBox.StandardButton.Yes:
+                self.progress = self.create_progress_dialog()
+                self.upload_thread = self.create_upload_thread(save_list)
+                self.upload_thread.start()
+        else:
+            dialog = QtWidgets.QMessageBox()
+            dialog.setWindowTitle("Selection Error")
+            dialog.setText("No games were selected.")
+            dialog.exec()
+            
 
     def create_upload_thread(self, save_list: list):
         upload_thread = UploadHelper(self.model.begin_upload)
