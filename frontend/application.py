@@ -1,12 +1,14 @@
+import typing
 from SaveTableModel import SaveTableModel
 import sys
 sys.path[0] += '\\..'
 import pathlib
 from backend.file_discovery import start_discovery
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
-from PyQt6.QtCore import Qt, QModelIndex
+from PyQt6.QtCore import Qt, QModelIndex, QThread
 from PyQt6.QtGui import QCursor
-from PyQt6.QtWidgets import QMessageBox, QHeaderView
+from PyQt6.QtWidgets import QMessageBox, QHeaderView, QProgressDialog
+import time
 
 qt_creator_file = "./frontend/application.ui"
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qt_creator_file)
@@ -40,10 +42,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.confirmation_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No);
         self.confirmation_box.setDefaultButton(QMessageBox.StandardButton.No)
 
+    def closeEvent(self, event) -> None:
+        self.model.close_gdrive_service()
+        event.accept()
+
+
+
     def __busy_cursor_decorator(func):
         def wrapper(self):
             """Wrapper to change cursor to busy cursor when process is running."""
-            self.setCursor(QCursor(Qt.CursorShape.BusyCursor))
+            self.setCursor(QCursor(Qt.CursorShape.WaitCursor))
             func(self)
             self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
         return wrapper  
@@ -92,7 +100,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             sortOrder = header.sortIndicatorOrder()
         self.model.sort(column, sortOrder)
 
-    @__busy_cursor_decorator
     def upload_data(self):
         message = 'Do you really want to upload saves for the following games?\n\n'
         
@@ -106,8 +113,53 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         confirmation_choice = self.confirmation_box.exec()
 
         if confirmation_choice == QMessageBox.StandardButton.Yes:
-            self.model.begin_upload(save_list)
+            self.progress = self.create_progress_dialog()
+            self.upload_thread = self.create_upload_thread(save_list)
+            self.upload_thread.start()
 
+    def create_upload_thread(self, save_list: list):
+        upload_thread = UploadHelper(self.model.begin_upload)
+        upload_thread.started.connect(self.handle_thread_start)
+        upload_thread.update_signal.connect(self.update_dialog)
+        upload_thread.finished.connect(self.handle_thread_finish)
+        upload_thread.set_save_list(save_list)    
+
+        return upload_thread
+
+    def create_progress_dialog(self):
+        progress = CleanupProcessingProgressDialog()
+        progress.hide()
+        progress.userCancel.connect(self.cancel_dialog)
+
+        return progress
+
+    def update_dialog(self, value: int, label: str):
+        self.progress.setLabelText(f"Uploading {label}...")
+        self.progress.setValue(value)
+
+    def cancel_dialog(self):
+        if self.upload_thread.isRunning():
+            label_text = self.progress.labelText()
+            self.progress.setLabelText(f"Finishing {label_text[0].lower() + label_text[1:]}. Please wait.")
+            self.progress.setCancelButtonText("Please Wait.")
+            self.progress.setDisabled(True)
+            self.upload_thread.handle_cancelation()
+            self.upload_thread.quit()
+            
+
+    def handle_thread_start(self):
+        num_files = len(self.upload_thread.save_list)
+        self.progress.setMinimum(0)
+        self.progress.setMaximum(num_files)
+        self.progress.setWindowTitle('Uploading Saves')
+        self.progress.setMinimumDuration(0)
+        self.progress.setWindowModality(Qt.WindowModality.WindowModal)
+        self.progress.setValue(0)
+        self.progress.setLabelText("Uploading saves...")
+        self.progress.show()
+        
+    def handle_thread_finish(self):
+        self.progress.close()
 
     def remove_row(self):
         index = self.savesTableView.currentIndex()
@@ -134,7 +186,49 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if game_name[1]:
         
             self.model.add_row(game_name[0], str(path), index)
+
+class CleanupProcessingProgressDialog(QProgressDialog):
+    userCancel = QtCore.pyqtSignal()
+    
+    def __init__(self):
+        super().__init__()
+        cancelButton = self.findChild(QtWidgets.QPushButton)
+        cancelButton.clicked.disconnect(self.canceled)
+        cancelButton.clicked.connect(self.userCancel)
+
         
+
+    def reject(self):
+        pass
+
+    def closeEvent(self, event) -> None:
+        if event.spontaneous:
+            event.ignore()
+
+class UploadHelper(QThread):
+    update_signal = QtCore.pyqtSignal(int, str)
+
+    def __init__(self, upload_function, save_list: list = None):
+        super().__init__()
+        self.upload_function = upload_function
+        self.save_list = save_list
+        self.canceled = False
+        
+    def handle_cancelation(self):
+        self.canceled = True
+
+    def run(self):
+        for i, (game_name, location) in enumerate(self.save_list):
+            if self.canceled:
+                break
+            self.update_signal.emit(i, game_name)
+            self.upload_function(game_name, location)
+        self.update_signal.emit(len(self.save_list), 'Finished!')
+        self.canceled = False
+        
+    def set_save_list(self, save_list: list):
+        self.save_list = save_list
+
 class CheckBoxHeader(QHeaderView):
     ''' Class to add a header checkbox to the first column of horizontal header.
         Modified from https://stackoverflow.com/questions/30932528/adding-checkbox-as-vertical-header-in-qtableview/30934160#30934160

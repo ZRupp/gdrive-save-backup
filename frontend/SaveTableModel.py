@@ -1,4 +1,4 @@
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore
 from PyQt6.QtCore import QModelIndex, QObject, Qt
 import sys
 
@@ -116,6 +116,9 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         data = [[game_name, save_location] for game_name, save_location in data.items()]
         return data
 
+    def close_gdrive_service(self):
+        self._g_drive.drive_service.close()
+
     def update_saves(self):
         self._raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
         self._data = self.__format_data(self._raw_data)
@@ -166,11 +169,8 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit(index, index, [role])
         self.layoutChanged.emit()
 
-    def begin_upload(self, data_to_upload: list):
-
-        for game_name, location in data_to_upload:
-            print(game_name, location)
-            self._g_drive.upload_to_gdrive(location, game_name)
+    def begin_upload(self, game_name: str, location: str):  
+        self._g_drive.upload_files(location, game_name)
 
 
     def select_all(self, isChecked: bool) -> bool:
