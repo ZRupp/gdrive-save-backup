@@ -42,6 +42,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.confirmation_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No);
         self.confirmation_box.setDefaultButton(QMessageBox.StandardButton.No)
 
+    def closeEvent(self, event) -> None:
+        self.model.close_gdrive_service()
+        event.accept()
+
 
 
     def __busy_cursor_decorator(func):
