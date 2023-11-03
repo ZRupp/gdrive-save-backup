@@ -232,8 +232,11 @@ class GDrive:
     def folder_processor(self, folder_name: str, parent_folder: str) -> str:
         existent_folder = self.get_folder_metadata(folder_name, parent_folder)
         if not existent_folder:
+            logger.info(f"{folder_name} doesn't exist. Attempting to create.")
             current_folder_id = self.create_folder(folder_name, [parent_folder])
+            logger.info(f"{folder_name} folder created.")
         else:
+            logger.info(f"{folder_name} folder exists.")
             current_folder_id = existent_folder["id"]
 
         return current_folder_id
@@ -262,36 +265,21 @@ class GDrive:
 
         return file_id
 
-    def build_game_folder(self, game_name: str):
-        saves_id = self.folder_ids[Path(DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER).parts[-1]]
-        # Make a folder for the game's saves
-        existent_game_folder = self.get_folder_metadata(game_name, saves_id)
-        if not existent_game_folder:
-            logger.info(f"{game_name} doesn't exist. Attempting to create.")
-            # Get the parent id
-            parent = saves_id
-
-            game_folder_id = self.create_folder(game_name, [parent])
-            self.folder_ids[game_name] = game_folder_id
-            logger.info(f"{game_name} folder created.")
-        else:
-            logger.info(f"{game_name} folder exists.")
-            game_folder_id = existent_game_folder["id"]
-            self.folder_ids[game_name] = game_folder_id
-
     def upload_files(self, local_path: str, game_name: str):
         """Method for uploading all contents of given path.
 
         TODO: Upload to Saves/game_name
         """
         top_folder = Path(local_path).parts[-1]
-        self.build_game_folder(game_name)
+        saves_id = self.folder_ids[Path(DEFAULT_GDRIVE_REMOTE_SAVE_FOLDER).parts[-1]]
+        game_id = self.folder_processor(game_name, saves_id)
+        self.folder_ids[game_name] = game_id
         for path, dirs, files in os.walk(local_path):
             parts = Path(path).parts
             parent_folder_id = (
                 self.folder_ids[path]
                 if parts[-1] != top_folder
-                else self.folder_ids[game_name]
+                else game_id
             )
             for folder_name in dirs:
                 logger.info(f"Processing {path}\\{folder_name} folder.")
