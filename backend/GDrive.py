@@ -84,14 +84,14 @@ class GDrive:
                 folder_id = self.folder_ids["root"]
             else:
                 parent = folder_id
-                existent_folder = self.get_folder_metadata(part)
+                existent_folder = self.get_metadata(part, type='folder')
                 if not existent_folder:
                     logger.info(f"Adding {part} to GDrive")
                     folder_id = self.create_folder(part, [folder_id])
                     self.folder_ids[part] = folder_id
                 else:
                     logger.info(f"{part} already exists.")
-                    self.folder_ids[part] = self.get_folder_metadata(part, parent)["id"]
+                    self.folder_ids[part] = self.get_metadata(part, parent, type='folder')["id"]
 
         '''
     def download_from_g_drive(
@@ -128,28 +128,13 @@ class GDrive:
             os.path.isfile(path)
         '''
 
-    def get_folder_metadata(self, foldername: str, parent: str = None) -> str or None:
-        """Returns folder id, name, and parents if it exists, else None."""
-
+    def get_metadata(self, name: str, parent: str = None, type = None):
         try:
-            q = f"name = '{foldername}' and mimeType = 'application/vnd.google-apps.folder' and trashed=false"
+            q = f"name='{name}' and trashed=false"
             if parent:
                 q += f" and '{parent}' in parents"
-            response = (
-                self.drive_service.files()
-                .list(q=q, fields="files(id, name, parents)")
-                .execute()
-            )
-
-        except HttpError as error:
-            logger.error(f"An error occurred: {error}")
-            return
-
-        return response.get("files", [])[0] if response.get("files", []) else None
-
-    def get_file_metada(self, filename: str, parents: list) -> str or None:
-        try:
-            q = f"name = '{filename}' and trashed=false and '{parents[0]}' in parents"
+            if type == 'folder':
+                q += f" and mimeType = 'application/vnd.google-apps.folder'"
 
             response = (
                 self.drive_service.files()
@@ -230,7 +215,7 @@ class GDrive:
         return True
 
     def folder_processor(self, folder_name: str, parent_folder: str) -> str:
-        existent_folder = self.get_folder_metadata(folder_name, parent_folder)
+        existent_folder = self.get_metadata(folder_name, parent_folder, type='folder')
         if not existent_folder:
             logger.info(f"{folder_name} doesn't exist. Attempting to create.")
             current_folder_id = self.create_folder(folder_name, [parent_folder])
@@ -243,7 +228,7 @@ class GDrive:
 
     def file_processor(self, path: str, file: str, current_folder_id) -> str:
         file_path = f"{path}/{file}"
-        existent_file = self.get_file_metada(file, [current_folder_id])
+        existent_file = self.get_metadata(file, current_folder_id)
 
         if not existent_file:
             file_id = self.create_file(file_path, [current_folder_id])
