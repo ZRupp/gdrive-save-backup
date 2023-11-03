@@ -36,10 +36,10 @@ class GDrive:
         self.initialize_folder_structure()
 
     def __del__(self):
-        logger.info('Closing drive service.')
+        logger.info("Closing drive service.")
         if self.drive_service:
             self.drive_service.close()
-        logger.info('Drive service closed.')
+        logger.info("Drive service closed.")
 
     def _get_auth_service(self):
         try:
@@ -84,14 +84,16 @@ class GDrive:
                 folder_id = self.folder_ids["root"]
             else:
                 parent = folder_id
-                existent_folder = self.get_metadata(part, type='folder')
+                existent_folder = self.get_metadata(part, type="folder")
                 if not existent_folder:
                     logger.info(f"Adding {part} to GDrive")
-                    folder_id = self.create_folder(part, [folder_id])
+                    folder_id = self.upload_to_gdrive(part, parents=[folder_id], type='folder')
                     self.folder_ids[part] = folder_id
                 else:
                     logger.info(f"{part} already exists.")
-                    self.folder_ids[part] = self.get_metadata(part, parent, type='folder')["id"]
+                    self.folder_ids[part] = self.get_metadata(
+                        part, parent, type="folder"
+                    )["id"]
 
         '''
     def download_from_g_drive(
@@ -128,12 +130,12 @@ class GDrive:
             os.path.isfile(path)
         '''
 
-    def get_metadata(self, name: str, parent: str = None, type = None):
+    def get_metadata(self, name: str, parent: str = None, type=None):
         try:
             q = f"name='{name}' and trashed=false"
             if parent:
                 q += f" and '{parent}' in parents"
-            if type == 'folder':
+            if type == "folder":
                 q += f" and mimeType = 'application/vnd.google-apps.folder'"
 
             response = (
@@ -148,77 +150,50 @@ class GDrive:
 
         return response.get("files", [])[0] if response.get("files", []) else None
 
-    def create_folder(self, foldername: str, parents: list = []) -> str:
-        """Method to create and upload a folder to GDrive.
-
-        Returns the folder id if successful, else None.
-        """
-
+    def upload_to_gdrive(
+        self,
+        name: str,
+        remote_file_id: str = None,
+        parents: list = [],
+        update: bool = False,
+        type: str = "file",
+    ) -> str:
         try:
-            file_metadata = {
-                "name": foldername,
-                "mimeType": "application/vnd.google-apps.folder",
-                "parents": parents,
-            }
+            if not update:
+                file_metadata = {"parents": parents}
+                if type == "file":
+                    file_metadata["name"] = Path(name).parts[-1]
+                elif type == "folder":
+                    file_metadata["name"] = name
+                    file_metadata["mimeType"] = "application/vnd.google-apps.folder"
 
-            file = (
-                self.drive_service.files()
-                .create(body=file_metadata, fields="id")
-                .execute()
-            )
+            media = MediaFileUpload(name) if type == "file" else None
 
-        except HttpError as error:
-            logger.error(f"An error occurred: {error}")
-            return
+            file_object = self.drive_service.files()
 
-        return file.get("id")
-
-    def create_file(self, filename: str, parents: list = []) -> str:
-        """Method to create and upload a file to GDrive.
-
-        Returns the file id if successful, else None."""
-
-        try:
-            file_metadata = {"name": Path(filename).parts[-1], "parents": parents}
-
-            media = MediaFileUpload(filename)
-
-            file = (
-                self.drive_service.files()
-                .create(
+            if not update:
+                file = file_object.create(
                     uploadType="multipart",
                     body=file_metadata,
                     media_body=media,
                     fields="id",
                 )
-                .execute()
-            )
+            else:
+                file = file_object.update(
+                    uploadType="multipart", media_body=media, fileId=remote_file_id
+                )
+            file = file.execute()
+
         except HttpError as error:
             logger.error(f"An error occurred: {error}")
             return
         return file.get("id")
 
-    def update_file(self, local_file: str, remote_file_id: str) -> bool:
-        """Method to update an existing file if the local file is newer than the remote file."""
-
-        try:
-            media = MediaFileUpload(local_file)
-
-            file = (
-                self.drive_service.files()
-                .update(uploadType="multipart", media_body=media, fileId=remote_file_id)
-                .execute()
-            )
-        except HttpError as error:
-            logger.error(f"An error occurred: {error}")
-            return False
-        return True
-
     def folder_processor(self, folder_name: str, parent_folder: str) -> str:
-        existent_folder = self.get_metadata(folder_name, parent_folder, type='folder')
+        existent_folder = self.get_metadata(folder_name, parent_folder, type="folder")
         if not existent_folder:
             logger.info(f"{folder_name} doesn't exist. Attempting to create.")
-            current_folder_id = self.create_folder(folder_name, [parent_folder])
+            current_folder_id = self.upload_to_gdrive(folder_name, parents=[parent_folder], type='folder')
             logger.info(f"{folder_name} folder created.")
         else:
             logger.info(f"{folder_name} folder exists.")
@@ -231,7 +206,7 @@ class GDrive:
         existent_file = self.get_metadata(file, current_folder_id)
 
         if not existent_file:
-            file_id = self.create_file(file_path, [current_folder_id])
+            file_id = self.upload_to_gdrive(file_path, parents=[current_folder_id])
         else:
             file_id = existent_file["id"]
             local_modified_time = datetime.fromtimestamp(
@@ -262,9 +237,7 @@ class GDrive:
         for path, dirs, files in os.walk(local_path):
             parts = Path(path).parts
             parent_folder_id = (
-                self.folder_ids[path]
-                if parts[-1] != top_folder
-                else game_id
+                self.folder_ids[path] if parts[-1] != top_folder else game_id
             )
             for folder_name in dirs:
                 logger.info(f"Processing {path}\\{folder_name} folder.")
