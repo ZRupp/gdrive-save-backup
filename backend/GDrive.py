@@ -84,16 +84,16 @@ class GDrive:
                 folder_id = self.folder_ids["root"]
             else:
                 parent = folder_id
-                existent_folder = self.get_metadata(part, type="folder")
+                existent_folder = self.get_metadata(part, parent, type="folder")
                 if not existent_folder:
                     logger.info(f"Adding {part} to GDrive")
-                    folder_id = self.upload_to_gdrive(part, parents=[folder_id], type='folder')
+                    folder_id = self.upload_to_gdrive(
+                        part, parents=[folder_id], type="folder"
+                    )
                     self.folder_ids[part] = folder_id
                 else:
                     logger.info(f"{part} already exists.")
-                    self.folder_ids[part] = self.get_metadata(
-                        part, parent, type="folder"
-                    )["id"]
+                    self.folder_ids[part] = existent_folder[0]["id"]
 
         '''
     def download_from_g_drive(
@@ -148,7 +148,7 @@ class GDrive:
             logger.error(f"An error occurred: {error}")
             return
 
-        return response.get("files", [])[0] if response.get("files", []) else None
+        return response.get("files", []) if response.get("files", []) else None
 
     def upload_to_gdrive(
         self,
@@ -188,16 +188,18 @@ class GDrive:
             logger.error(f"An error occurred: {error}")
             return
         return file.get("id")
-
+    
     def folder_processor(self, folder_name: str, parent_folder: str) -> str:
         existent_folder = self.get_metadata(folder_name, parent_folder, type="folder")
         if not existent_folder:
             logger.info(f"{folder_name} doesn't exist. Attempting to create.")
-            current_folder_id = self.upload_to_gdrive(folder_name, parents=[parent_folder], type='folder')
+            current_folder_id = self.upload_to_gdrive(
+                folder_name, parents=[parent_folder], type="folder"
+            )
             logger.info(f"{folder_name} folder created.")
         else:
             logger.info(f"{folder_name} folder exists.")
-            current_folder_id = existent_folder["id"]
+            current_folder_id = existent_folder[0]["id"]
 
         return current_folder_id
 
@@ -208,7 +210,7 @@ class GDrive:
         if not existent_file:
             file_id = self.upload_to_gdrive(file_path, parents=[current_folder_id])
         else:
-            file_id = existent_file["id"]
+            file_id = existent_file[0]["id"]
             local_modified_time = datetime.fromtimestamp(
                 os.path.getmtime(file_path), tz=timezone.utc
             ).isoformat()
