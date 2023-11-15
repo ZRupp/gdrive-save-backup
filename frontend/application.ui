@@ -22,13 +22,6 @@
                       column="4">
                     <widget class="QPushButton"
                             name="discover_button">
-                        <property name="sizePolicy">
-                            <sizepolicy hsizetype="Fixed"
-                                        vsizetype="Fixed">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                            </sizepolicy>
-                        </property>
                         <property name="text">
                             <string>Discover Folders</string>
                         </property>
@@ -40,6 +33,15 @@
                             name="upload_button">
                         <property name="text">
                             <string>Upload to GDrive</string>
+                        </property>
+                    </widget>
+                </item>
+                <item row="2"
+                      column="4">
+                    <widget class="QPushButton"
+                            name="download_button">
+                        <property name="text">
+                            <string>Download from GDrive</string>
                         </property>
                     </widget>
                 </item>
