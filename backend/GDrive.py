@@ -167,7 +167,7 @@ class GDrive:
 
             while not done:
                 status, done = downloader.next_chunk()
-                logger.info(f"Download {int(status.progress() * 100)}.")
+                logger.info(f"Download at {int(status.progress() * 100)}%.")
 
         except HttpError as error:
             logger.info(f"An error occurred: {error}")
