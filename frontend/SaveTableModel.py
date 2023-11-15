@@ -22,7 +22,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self._data = self.__format_data(self._raw_data)
         self._headers = ["Game Name", "Save Location"]
         self._checkboxes = [True] * len(self._data)
-        self._g_drive = GDrive()
+        self.g_drive = GDrive()
 
     def columnCount(self, parent: QModelIndex) -> int:
         return len(self._headers)
@@ -117,7 +117,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         return data
 
     def close_gdrive_service(self):
-        self._g_drive.drive_service.close()
+        self.g_drive.drive_service.close()
 
     def update_saves(self):
         self._raw_data = load_from_json(DISCOVERED_FOLDERS_PATH)
@@ -170,7 +170,7 @@ class SaveTableModel(QtCore.QAbstractTableModel):
         self.layoutChanged.emit()
 
     def begin_upload(self, game_name: str, location: str):  
-        self._g_drive.upload_files(location, game_name)
+        self.g_drive.upload_files(location, game_name)
 
 
     def select_all(self, isChecked: bool) -> bool:
