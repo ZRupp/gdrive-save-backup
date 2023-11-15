@@ -1,11 +1,13 @@
 import os
+import io
+import shutil
 import logging
 from pathlib import Path
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
 from datetime import datetime, timezone
@@ -95,44 +97,11 @@ class GDrive:
                     logger.info(f"{part} already exists.")
                     self.folder_ids[part] = existent_folder[0]["id"]
 
-        '''
-    def download_from_g_drive(
-        self,
-        remote_path: str,
-        game_name: str,
-        local_path: str,
-    ) -> None:
-        """Simple method to download backups from GDrive.
-
-        TODO: Make this work with linux if it doesn't already.
-        TODO: Give user option to download even if remote is older than local.
-        """
-        if self.file_exists(local_path, local=True):
-            if self.file_needs_update(local_path, game_name, download=True):
-                # I'm leaving recursive=True here in case I want this to work for folders.
-                self.__fs.get(remote_path, local_path, recursive=True)
-                print(f"{remote_path} copied to {local_path}.")
-            else:
-                # We'll eventually give the user the option to download even if remote is older.
-                print(f"{local_path} is more recent than {remote_path}.")
-        else:
-            self.__get(remote_path, local_path, recursive=True)
-
-    def file_exists(
-        self,
-        path: str,
-        local=False,
-    ) -> bool:
-        """Simple method to check if the file exists remotely"""
-        if not local:
-            return self.__fs.exists(path)
-        else:
-            os.path.isfile(path)
-        '''
-
-    def get_metadata(self, name: str, parent: str = None, type=None):
+    def get_metadata(self, name: str=None, parent: str=None, type: str=None):
         try:
-            q = f"name='{name}' and trashed=false"
+            q = 'trashed=false'
+            if name:
+                q += f" and name='{name}'"
             if parent:
                 q += f" and '{parent}' in parents"
             if type == "folder":
@@ -140,7 +109,7 @@ class GDrive:
 
             response = (
                 self.drive_service.files()
-                .list(q=q, fields="files(id, name, modifiedTime, parents)")
+                .list(q=q, fields="files(id, name, modifiedTime, parents, mimeType)")
                 .execute()
             )
 
@@ -189,6 +158,46 @@ class GDrive:
             return
         return file.get("id")
     
+    def download_file(self, file_id: str, save_path: str):
+        try:
+            request = self.drive_service.files().get_media(fileId=file_id)
+            file = io.BytesIO()
+            downloader = MediaIoBaseDownload(file, request)
+            done = False
+
+            while not done:
+                status, done = downloader.next_chunk()
+                logger.info(f"Download {int(status.progress() * 100)}.")
+
+        except HttpError as error:
+            logger.info(f"An error occurred: {error}")
+            file = None
+
+        if file:
+            file.seek(0)
+            with open(save_path, 'wb') as f:
+                shutil.copyfileobj(file, f)
+
+        return file.getvalue()
+    
+    def download_from_gdrive(self, parent_id: str, root_dir: str):
+        children = self.get_metadata(parent=parent_id)
+        for child in children:
+
+            save_path = Path(root_dir) / child['name']
+            child_exists = Path.exists(save_path)
+            if child['mimeType'] == 'application/vnd.google-apps.folder':
+                if not child_exists:
+                    logger.info(f"Creating {save_path}.")
+                    os.mkdir(save_path)
+                    logger.info(f"{save_path} created.")
+                self.download_from_gdrive(child['id'], str(Path(root_dir) / child['name']))
+            else:
+                if not child_exists:
+                    logger.info(f"Downloading {save_path}.")
+                    self.download_file(child['id'], save_path)
+                    logger.info(f"{save_path} downloaded.")
+
     def folder_processor(self, folder_name: str, parent_folder: str) -> str:
         existent_folder = self.get_metadata(folder_name, parent_folder, type="folder")
         if not existent_folder:
@@ -255,10 +264,3 @@ class GDrive:
                 logger.info(f"{path}\\{file} processed. File id is: {file_id}.")
 
 
-if __name__ == "__main__":
-    gdrive = GDrive()
-    gdrive.upload_files(
-        Path("C:/Users/socia/AppData/LocalLow/RedHook/Darkest Dungeon II/SaveFiles"),
-        "Darkest Dungeon",
-    )
-    gdrive.drive_service.close()
