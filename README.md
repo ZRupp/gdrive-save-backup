@@ -36,7 +36,7 @@ Save Duper is a tool designed to simplify the process of managing and backing up
 2.  **Run the Application:** Start the Game Save Manager by running:
     
     ```bash
-    python main.py   
+    python frontend/application.py   
 3.  **Discover and Manage Folders:**
     
     -   Click "Discover Folders" for automated discovery.
