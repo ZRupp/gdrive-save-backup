@@ -1,9 +1,11 @@
 
 # Game Save Manager
 
+[![Game Save Manager Screenshot](./media/Screenshot.png)](./media/Screenshot.png)
+
 ## Overview
 
-This Game Save Manager is a tool designed to simplify the process of managing and backing up your game saves using the Google API. It features a user-friendly GUI built with PyQT, automated save discovery, and the ability to customize and organize your save folders.
+Save Duper is a tool designed to simplify the process of managing and backing up your game saves using the Google API. It features a user-friendly GUI built with PyQT, automated save discovery, and the ability to customize and organize your save folders.
 
 ## Features
 
