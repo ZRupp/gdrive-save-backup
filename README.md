@@ -34,7 +34,7 @@ This Game Save Manager is a tool designed to simplify the process of managing an
 2.  **Run the Application:** Start the Game Save Manager by running:
     
     ```bash
-    python main.py   
+    python frontend/application.py   
 3.  **Discover and Manage Folders:**
     
     -   Click "Discover Folders" for automated discovery.
